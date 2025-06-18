@@ -1,0 +1,4 @@
+# Preferred Approach
+
+A Python-based testbench will be developed using cocotb.Simulation of the LED driver will be performed using Icarus Verilog, fully integrated with cocotb, to validate the functional correctness of the design.
+Upon successful simulation, the verified design will be synthesized and implemented using the official toolchain for the GateMate FPGA Evaluation Board.

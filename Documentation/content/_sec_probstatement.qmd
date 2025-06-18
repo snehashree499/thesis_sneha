@@ -1,0 +1,3 @@
+# Problem Statement
+
+This project aims to demonstrate a complete functional verification workflow using the open source IIC-OSIC-TOOLS. A cocotb testbench is developed to verify the behavior of a Verilog-based LED driver module, with simulation carried out using Icarus Verilog. After successful verification in simulation, the design is synthesized and deployed on the GateMate FPGA Evaluation Board to validate its functionality through real hardware execution.

@@ -1,0 +1,17 @@
+---
+title: Verification of a Verilog-Based LED Driver Using cocotb and Gatemate FPGA Platform
+author:
+ - name: Sneha Shree Katepalli
+   Matriculation number: 5364673
+   email: snehashree499@gmail.com
+   affiliations:
+      - Hochschule Bremen
+citation:
+  url: https://github.com/snehashree499/CEMS_DSM
+---
+
+
+{{< include /content/_sec_intro.qmd >}}
+{{< include /content/_sec_probstatement.qmd >}}
+{{< include /content/_sec_objectives.qmd >}}
+{{< include /content/_sec_approach.qmd >}}
