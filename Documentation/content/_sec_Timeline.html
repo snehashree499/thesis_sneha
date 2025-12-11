@@ -6,9 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Sneha Shree Katepalli">
 
-<title>Digital Design and FPGA Prototyping of a Mixed-Signal LED Driver System.</title>
+<title>sec_timeline</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -24,195 +23,36 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-6e5ff12f349f7d7ee99023e5a7f49be9.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="_sec_Timeline_files/libs/clipboard/clipboard.min.js"></script>
+<script src="_sec_Timeline_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="_sec_Timeline_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="_sec_Timeline_files/libs/quarto-html/popper.min.js"></script>
+<script src="_sec_Timeline_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="_sec_Timeline_files/libs/quarto-html/anchor.min.js"></script>
+<link href="_sec_Timeline_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="_sec_Timeline_files/libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="_sec_Timeline_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="_sec_Timeline_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="_sec_Timeline_files/libs/bootstrap/bootstrap-bb462d781dde1847d9e3ccf7736099dd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
 
-<meta name="citation_title" content="Digital Design and FPGA Prototyping of a Mixed-Signal LED Driver System.">
-<meta name="citation_author" content="Sneha Shree Katepalli">
-<meta name="citation_fulltext_html_url" content="https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha">
-<meta name="citation_language" content="en">
 </head>
 
-<body class="quarto-light">
+<body class="fullcontent quarto-light">
 
-<header id="title-block-header" class="quarto-title-block default toc-left page-columns page-full">
-  <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-body">
-      <h1 class="title">Digital Design and FPGA Prototyping of a Mixed-Signal LED Driver System.</h1>
-          </div>
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
 
-    
-    <div class="quarto-title-meta-container">
-      <div class="quarto-title-meta-column-start">
-            <div class="quarto-title-meta-author">
-          <div class="quarto-title-meta-heading">Author</div>
-          <div class="quarto-title-meta-heading">Affiliation</div>
-          
-                <div class="quarto-title-meta-contents">
-            <p class="author">Sneha Shree Katepalli <a href="mailto:snehashree499@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
-          </div>
-                <div class="quarto-title-meta-contents">
-                    <p class="affiliation">
-                        Hochschule Bremen
-                      </p>
-                  </div>
-                    </div>
-        
-        <div class="quarto-title-meta">
-
-                      
-          
-                
-              </div>
-      </div>
-      <div class="quarto-title-meta-column-end quarto-other-formats-target">
-      <div class="quarto-alternate-formats"><div class="quarto-title-meta-heading">Other Formats</div><div class="quarto-title-meta-contents"><p><a href="thesis_hp.pdf"><i class="bi bi-file-pdf"></i>PDF</a></p></div></div></div>
-    </div>
+<main class="content" id="quarto-document-content">
 
 
 
-    <div class="quarto-other-links-text-target">
-    </div>  </div>
-</header><div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
-<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
-  <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">Table of contents</h2>
-   
-  <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
-  <li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li>
-  <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives">Objectives</a></li>
-  <li><a href="#preferred-approach" id="toc-preferred-approach" class="nav-link" data-scroll-target="#preferred-approach">Preferred Approach</a></li>
-  <li><a href="#work-packages" id="toc-work-packages" class="nav-link" data-scroll-target="#work-packages">Work Packages</a>
-  <ul class="collapse">
-  <li><a href="#wp1-requirements-analysis-and-reference-study" id="toc-wp1-requirements-analysis-and-reference-study" class="nav-link" data-scroll-target="#wp1-requirements-analysis-and-reference-study">WP1 – Requirements Analysis and Reference Study</a></li>
-  <li><a href="#wp2-behavioural-modelling-matlabsimulink-hdl-coder" id="toc-wp2-behavioural-modelling-matlabsimulink-hdl-coder" class="nav-link" data-scroll-target="#wp2-behavioural-modelling-matlabsimulink-hdl-coder">WP2 – Behavioural Modelling (Matlab/Simulink + HDL Coder)</a></li>
-  <li><a href="#wp3-digital-micro-architecture-in-systemverilog" id="toc-wp3-digital-micro-architecture-in-systemverilog" class="nav-link" data-scroll-target="#wp3-digital-micro-architecture-in-systemverilog">WP3 – Digital Micro-Architecture in SystemVerilog</a></li>
-  <li><a href="#wp4-fpga-prototyping-and-experimental-validation" id="toc-wp4-fpga-prototyping-and-experimental-validation" class="nav-link" data-scroll-target="#wp4-fpga-prototyping-and-experimental-validation">WP4 – FPGA Prototyping and Experimental Validation</a></li>
-  <li><a href="#wp5-documentation" id="toc-wp5-documentation" class="nav-link" data-scroll-target="#wp5-documentation">WP5 – Documentation</a></li>
-  <li><a href="#expected-results" id="toc-expected-results" class="nav-link" data-scroll-target="#expected-results">Expected Results</a></li>
-  <li><a href="#timeline" id="toc-timeline" class="nav-link" data-scroll-target="#timeline">Timeline</a></li>
-  </ul></li>
-  </ul>
-</nav>
-</div>
-<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-</div>
-<main class="content quarto-banner-title-block" id="quarto-document-content">
 
-
-
-  
-
-
-<section id="introduction" class="level1">
-<h1>Introduction</h1>
-<p>LED driver systems are widely used in lighting, displays, automotive applications, and many embedded systems. In modern aircraft, LED lighting systems are used for cabin illumination, safety lighting, signage, and many other functions. These systems must be highly reliable, efficient, and suitable for the demanding conditions of aviation.</p>
-<p>Mixed-signal LED drivers combine analog current-driving circuits with digital control logic. The digital part is responsible for controlling PWM (Pulse-Width Modulation), managing configuration registers, coordinating interfaces, and ensuring correct timing behaviour. Before a mixed-signal integrated circuit can be manufactured, its digital subsystem needs to be carefully designed, verified, and validated through FPGA prototyping and behavioural modelling.</p>
-<p>This thesis focuses on the initial design of the digital part of a mixed-signal LED driver. The work includes requirements analysis, behavioural modelling, RTL design in SystemVerilog, hardware validation on a GateMate FPGA, and using IIC-OSIC-TOOLS suite, including cocotb,and documenting the results using Quarto.</p>
-</section>
-<section id="problem-statement" class="level1">
-<h1>Problem Statement</h1>
-<p>The functional and timimg requirements of a mixed-signal LED driver must be extracted from the AES kick-off document and internal discussions. In addition, the LED1642GW device will serve as a reference to understand how similar LED drivers behave and what digital functions are commonly included.</p>
-<p>The design must also take into account the constraints of the SG13G2 semiconductor technology, such as allowed clock frequencies, IO limits, and supply domains. Once the requirements and constraints are clear, the digital architecture must be modelled, implemented, tested, and validated before it can be used in a real IC design.</p>
-<p>The challenge is to define and build a correct and verifiable digital design flow that covers behavioural modelling, RTL implementation, and FPGA prototyping.</p>
-</section>
-<section id="objectives" class="level1">
-<h1>Objectives</h1>
-<ol type="1">
-<li>To clearly understand and document all digital requirements of the LED driver system.</li>
-<li>To study the LED1642GW device as a reference for architecture and behaviour.</li>
-<li>To analyse the limitations and constraints of the SG13G2 process technology.</li>
-<li>To develop a behavioural model using Matlab/Simulink and HDL Coder.</li>
-<li>To design the digital micro-architecture in SystemVerilog following proper coding guidelines.</li>
-<li>To build a verification setup using cocotb and test the design on a GateMate FPGA.</li>
-<li>To document the complete thesis using Quarto that explains the design, methodology, and results.</li>
-</ol>
-</section>
-<section id="preferred-approach" class="level1">
-<h1>Preferred Approach</h1>
-<p>This thesis follows a structured engineering workflow to ensure the digital design is correct, reliable, and suitable for later integration into a mixed-signal IC.</p>
-<p>The work begins with understanding the system from both an architectural and functional perspective. The requirements from AES and the behaviour of the LED1642GW are studied to define what the digital subsystem must achieve. Once the requirements are clear, a behavioural model is created in Matlab/Simulink. This model allows early functional validation and provides a reference for later hardware implementation.</p>
-<p>After validating the model, the digital micro-architecture is designed in SystemVerilog. The RTL is structured into clean, modular blocks that reflect the behaviour captured in the model. Verification is carried out using cocotb, which allows flexible Python-based testing. The design is finally implemented on a GateMate FPGA to observe real hardware behaviour, including timing, PWM output, and state-machine operation.</p>
-<p>Throughout all steps, documentation is maintained to ensure traceability from requirements through implementation to validation.</p>
-</section>
-<section id="work-packages" class="level1">
-<h1>Work Packages</h1>
-<section id="wp1-requirements-analysis-and-reference-study" class="level2">
-<h2 class="anchored" data-anchor-id="wp1-requirements-analysis-and-reference-study">WP1 – Requirements Analysis and Reference Study</h2>
-<ul>
-<li><p>Extract and refine the digital requirements from the AES kick-off document and discussions.</p></li>
-<li><p>Study the LED1642GW in detail to understand its digital functions, PWM behaviour, interface structure, and limitations.</p></li>
-<li><p>Identify constraints coming from the SG13G2 technology such as clock restrictions, IO conditions, and available supply domains.</p></li>
-</ul>
-</section>
-<section id="wp2-behavioural-modelling-matlabsimulink-hdl-coder" class="level2">
-<h2 class="anchored" data-anchor-id="wp2-behavioural-modelling-matlabsimulink-hdl-coder">WP2 – Behavioural Modelling (Matlab/Simulink + HDL Coder)</h2>
-<ul>
-<li><p>Develop a high-level model that describes the expected digital behaviour of the driver.</p></li>
-<li><p>Use Simulink and HDL Coder to verify functional correctness before writing RTL code.</p></li>
-<li><p>Compare model behaviour against the expected reference operation.</p></li>
-</ul>
-</section>
-<section id="wp3-digital-micro-architecture-in-systemverilog" class="level2">
-<h2 class="anchored" data-anchor-id="wp3-digital-micro-architecture-in-systemverilog">WP3 – Digital Micro-Architecture in SystemVerilog</h2>
-<ul>
-<li><p>Translate the behavioural model and requirements into a synthesizable RTL design.</p></li>
-<li><p>Follow Posy’s coding style and general digital design best practices.</p></li>
-</ul>
-</section>
-<section id="wp4-fpga-prototyping-and-experimental-validation" class="level2">
-<h2 class="anchored" data-anchor-id="wp4-fpga-prototyping-and-experimental-validation">WP4 – FPGA Prototyping and Experimental Validation</h2>
-<ul>
-<li><p>Use cocotb to create a testbench and verify the RTL design in simulation.</p></li>
-<li><p>Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.</p></li>
-</ul>
-</section>
-<section id="wp5-documentation" class="level2">
-<h2 class="anchored" data-anchor-id="wp5-documentation">WP5 – Documentation</h2>
-<ul>
-<li><p>Write the complete thesis manuscript in Quarto, following the Thesis Style Guide of Hochschule Bremen.</p></li>
-<li><p>Include diagrams, results, verification data, and clear explanations of all design decisions.</p></li>
-</ul>
-</section>
-<section id="expected-results" class="level2">
-<h2 class="anchored" data-anchor-id="expected-results">Expected Results</h2>
-<p>The thesis is expected to deliver:</p>
-<ul>
-<li><p>A detailed digital requirements document co-developed with AES.</p></li>
-<li><p>A behavioural model of the LED driver digital subsystem.</p></li>
-<li><p>A synthesizable SystemVerilog design of the LED driver digital subsystem.</p></li>
-<li><p>Verification and test results from cocotb and FPGA prototyping.</p></li>
-<li><p>A complete thesis manuscript with clear documentation and conclusions.</p></li>
-</ul>
-</section>
 <section id="timeline" class="level2">
 <h2 class="anchored" data-anchor-id="timeline">Timeline</h2>
 <p>** yet to be added **</p>
 </section>
-</section>
 
-<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{shree_katepalli,
-  author = {Shree Katepalli, Sneha},
-  title = {Digital {Design} and {FPGA} {Prototyping} of a {Mixed-Signal}
-    {LED} {Driver} {System.}},
-  url = {https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha},
-  langid = {en}
-}
-</code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-shree_katepalli" class="csl-entry quarto-appendix-citeas" role="listitem">
-Shree Katepalli, Sneha. n.d. <span>“Digital Design and FPGA Prototyping
-of a Mixed-Signal LED Driver System.”</span> <a href="https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha">https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha</a>.
-</div></div></section></div></main>
+</main>
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {

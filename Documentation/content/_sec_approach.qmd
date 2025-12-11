@@ -1,4 +1,9 @@
 # Preferred Approach
 
-A Python-based testbench will be developed using cocotb.Simulation of the LED driver will be performed using Icarus Verilog, fully integrated with cocotb, to validate the functional correctness of the design.
-Upon successful simulation, the verified design will be synthesized and implemented using the official toolchain for the GateMate FPGA Evaluation Board.
+This thesis follows a structured engineering workflow to ensure the digital design is correct, reliable, and suitable for later integration into a mixed-signal IC.
+
+The work begins with understanding the system from both an architectural and functional perspective. The requirements from AES and the behaviour of the LED1642GW are studied to define what the digital subsystem must achieve. Once the requirements are clear, a behavioural model is created in Matlab/Simulink. This model allows early functional validation and provides a reference for later hardware implementation.
+
+After validating the model, the digital micro-architecture is designed in SystemVerilog. The RTL is structured into clean, modular blocks that reflect the behaviour captured in the model. Verification is carried out using cocotb, which allows flexible Python-based testing. The design is finally implemented on a GateMate FPGA to observe real hardware behaviour, including timing, PWM output, and state-machine operation.
+
+Throughout all steps, documentation is maintained to ensure traceability from requirements through implementation to validation.

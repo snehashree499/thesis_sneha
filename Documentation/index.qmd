@@ -1,5 +1,5 @@
 ---
-title: Verification of a Verilog-Based LED Driver Using cocotb and Gatemate FPGA Platform
+title: Digital Design and FPGA Prototyping of a Mixed-Signal LED Driver System.
 author:
  - name: Sneha Shree Katepalli
    Matriculation number: 5364673
@@ -7,7 +7,7 @@ author:
    affiliations:
       - Hochschule Bremen
 citation:
-  url: https://github.com/snehashree499/CEMS_DSM
+  url: https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha
 ---
 
 
@@ -15,3 +15,6 @@ citation:
 {{< include /content/_sec_probstatement.qmd >}}
 {{< include /content/_sec_objectives.qmd >}}
 {{< include /content/_sec_approach.qmd >}}
+{{< include /content/_sec_wp.qmd >}}
+{{< include /content/_sec_expec_res.qmd >}}
+{{< include /content/_sec_Timeline.qmd >}}

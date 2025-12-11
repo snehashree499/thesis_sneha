@@ -1,11 +1,9 @@
 # Objectives
 
-To utilize the IIC-OSIC-TOOLS, an open-source verification suite, as the foundation for a complete FPGA verification workflow.
-
-To develop a modular and reusable testbench using cocotb, written in Python, for verifying the functionality of a Verilog-based LED driver module.
-
-To perform simulation-based verification using Icarus Verilog, integrated with cocotb, to ensure the correctness of the digital design.
-
-To synthesize the verified design using the GateMate toolchain and deploy it onto the GateMate FPGA Evaluation Board.
-
-To document the verification process, highlight the effectiveness of open-source tools, and provide a repeatable methodology for similar verification tasks.
+1. To clearly understand and document all digital requirements of the LED driver system.
+2. To study the LED1642GW device as a reference for architecture and behaviour.
+3. To analyse the limitations and constraints of the SG13G2 process technology.
+4. To develop a behavioural model using Matlab/Simulink and HDL Coder.
+5. To design the digital micro-architecture in SystemVerilog following proper coding guidelines.
+6. To build a verification setup using cocotb and test the design on a GateMate FPGA.
+7. To document the complete thesis using Quarto that explains the design, methodology, and results.

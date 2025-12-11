@@ -1,7 +1,7 @@
 # Introduction
 
-The rise of Python in the hardware verification domain, particularly through frameworks like cocotb (coroutine-based co-simulation testbench), presents a modern alternative to conventional verification workflows.
-The cocotb framework allows engineers to write testbenches in Python while interfacing directly with HDL simulators. It brings advantages like high-level abstraction, easier scripting, and integration with powerful Python libraries. Furthermore, cocotb supports coroutine-based event-driven simulations, enabling concise and readable verification code.
-In parallel, the Gatemate FPGA Evaluation Board developed by Cologne Chip AG offers a cost-effective and open platform for FPGA prototyping and development. 
-The emergence of cocotb, a Python-based verification framework, opens the door to more flexible and high-level verification workflows. 
-This thesis uses the IIC-OSIC-TOOLS suite, including cocotb, to develop and apply a complete verification workflow for a Verilog-based LED driver, and deploys the verified design on the GateMate FPGA Evaluation Board from Cologne Chip AG.
+LED driver systems are widely used in lighting, displays, automotive applications, and many embedded systems. In modern aircraft, LED lighting systems are used for cabin illumination, safety lighting, signage, and many other functions. These systems must be highly reliable, efficient, and suitable for the demanding conditions of aviation.
+
+Mixed-signal LED drivers combine analog current-driving circuits with digital control logic. The digital part is responsible for controlling PWM (Pulse-Width Modulation), managing configuration registers, coordinating interfaces, and ensuring correct timing behaviour. Before a mixed-signal integrated circuit can be manufactured, its digital subsystem needs to be carefully designed, verified, and validated through FPGA prototyping and behavioural modelling.
+
+This thesis focuses on the initial design of the digital part of a mixed-signal LED driver. The work includes requirements analysis, behavioural modelling, RTL design in SystemVerilog, hardware validation on a GateMate FPGA, and using IIC-OSIC-TOOLS suite, including cocotb,and documenting the results using Quarto.

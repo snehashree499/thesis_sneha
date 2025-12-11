@@ -1,3 +1,7 @@
 # Problem Statement
 
-This project aims to demonstrate a complete functional verification workflow using the open source IIC-OSIC-TOOLS. A cocotb testbench is developed to verify the behavior of a Verilog-based LED driver module, with simulation carried out using Icarus Verilog. After successful verification in simulation, the design is synthesized and deployed on the GateMate FPGA Evaluation Board to validate its functionality through real hardware execution.
+The functional and timimg requirements of a mixed-signal LED driver must be extracted from the AES kick-off document and internal discussions. In addition, the LED1642GW device will serve as a reference to understand how similar LED drivers behave and what digital functions are commonly included.
+
+The design must also take into account the constraints of the SG13G2 semiconductor technology, such as allowed clock frequencies, IO limits, and supply domains. Once the requirements and constraints are clear, the digital architecture must be modelled, implemented, tested, and validated before it can be used in a real IC design.
+
+The challenge is to define and build a correct and verifiable digital design flow that covers behavioural modelling, RTL implementation, and FPGA prototyping.

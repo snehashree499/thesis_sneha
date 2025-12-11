@@ -1,0 +1,35 @@
+# Work Packages
+
+## WP1 – Requirements Analysis and Reference Study
+
+- Extract and refine the digital requirements from the AES kick-off document and discussions.
+
+- Study the LED1642GW in detail to understand its digital functions, PWM behaviour, interface structure, and limitations.
+
+- Identify constraints coming from the SG13G2 technology such as clock restrictions, IO conditions, and available supply domains.
+
+## WP2 – Behavioural Modelling (Matlab/Simulink + HDL Coder)
+
+- Develop a high-level model that describes the expected digital behaviour of the driver.
+
+- Use Simulink and HDL Coder to verify functional correctness before writing RTL code.
+
+- Compare model behaviour against the expected reference operation.
+
+## WP3 – Digital Micro-Architecture in SystemVerilog
+
+- Translate the behavioural model and requirements into a synthesizable RTL design.
+
+- Follow Posy’s coding style and general digital design best practices.
+
+## WP4 – FPGA Prototyping and Experimental Validation
+
+- Use cocotb to create a testbench and verify the RTL design in simulation.
+
+- Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.
+
+## WP5 – Documentation
+
+- Write the complete thesis manuscript in Quarto, following the Thesis Style Guide of Hochschule Bremen.
+
+- Include diagrams, results, verification data, and clear explanations of all design decisions.
