@@ -1,0 +1,16 @@
+# Tapeout Submissions and Repository Links
+
+## **Tapeout 1**
+This design, titled **“ledamp_ph70”**, was submitted to the *IHP Open-MPW TO_July2025* program and is available at:\newline
+**https://github.com/IHP-GmbH/TO_July2025/tree/main/ledamp_ph70**\newline
+All associated files including the final GDSII layout, DRC reports, LVS logs, simulation data, and documentation are provided in the corresponding repository.  
+Tapeout 1 implements an **NMOS folded-cascode OTA**, serving as the first realization of the analog block within the open-source flow.
+
+
+## **Tapeout 2**
+The second submission, titled **“OTALED”**, is hosted at:\newline 
+**https://github.com/IHP-GmbH/TO_July2025/tree/main/OTALED**  
+This repository contains the complete set of fabrication-ready deliverables, analogous to Tapeout_1: layout, verification reports, extracted netlists, and supporting documentation.  
+In contrast to Tapeout 1, Tapeout 2 implements a **PMOS folded-cascode OTA**, enabling a comparative evaluation of device polarity, layout strategies, and biasing considerations within the same SG13G2 process.
+
+Together, these two tapeouts document the full analog design cycle executed twice with interchanged roles, providing a complete methodological reference for future open-source mixed-signal tapeout efforts.

@@ -1,0 +1,91 @@
+# List of Abbreviations {.unnumbered .unlisted}
+
+**AC** — Alternating Current  
+**AVDD** — Analog Supply Voltage  
+**AVSS** — Analog Ground
+
+**CACE** — Computer-Aided Circuit Evaluation  
+**CC** — Coupling Capacitor  
+**C** — Capacitance  
+**$C_{gd}$** — Gate–Drain Capacitance  
+**$C_{gs}$** — Gate–Source Capacitance  
+**CMOS** — Complementary Metal–Oxide–Semiconductor  
+**CMRR** — Common-Mode Rejection Ratio   
+
+**DC** — Direct Current  
+**DFM** — Design for Manufacturability  
+**DRC** — Design Rule Check  
+
+**EDA** — Electronic Design Automation  
+**EDA-OS** — Open-Source Electronic Design Automation  
+**ESD** — Electrostatic Discharge  
+
+**FF** — Fast–Fast Process Corner  
+**FS** — Fast–Slow Process Corner  
+
+**GDS / GDSII** — Graphic Data System (Final Layout Format)  
+**$g_m$** — Transconductance  
+
+**Hz** — Hertz  
+
+**I/O** — Input/Output  
+**IC** — Integrated Circuit  
+**$I_d$** — Drain Current  
+**IHP** — Innovations for High Performance Microelectronics  
+
+**LED** — Light-Emitting Diode  
+**LDO** — Low-Dropout Regulator  
+**LHS** — Left-Hand Side  
+**L** — Channel Length  
+**$L_{min}$** — Minimum Channel Length  
+
+**MC** — Monte-Carlo Simulation  
+**MIM** — Metal–Insulator–Metal Capacitor   
+**MOSFET** — Metal–Oxide–Semiconductor Field-Effect Transistor  
+**MPW** — Multi-Project Wafer  
+**µm** — Micrometre (Micron)  
+
+**$n_g$** — Number of gates  
+**$N_f$** — Number of fingers  
+**NMOS** — n-channel MOSFET  
+**nm** — Nanometre  
+
+**OTA** — Operational Transconductance Amplifier  
+
+**PAD** — Bond Pad  
+**PCB** — Printed Circuit Board  
+**Pcell** — Parameterized Cell  
+**PDK** — Process Design Kit  
+**PEX** — Parasitic Extraction  
+**PMIC** — Power Management Integrated Circuit  
+**PMOS** — p-channel MOSFET  
+**PPV** — Post-Processing Verification  
+**PSRR** — Power Supply Rejection Ratio  
+**PVT** — Process, Voltage, Temperature  
+
+**Qt** — Qt Framework (used by KLayout GUI)  
+
+**R** — Resistance  
+**$R_{sub}$** — Substrate Resistance  
+**$R_{well}$** — Well Resistance    
+ 
+**SG13G2** — IHP 130-nm SiGe BiCMOS Technology  
+**SME** — Small and Medium-Sized Enterprise  
+**SS** — Slow–Slow Process Corner  
+**SF** — Slow–Fast Process Corner  
+**STI** — Shallow Trench Isolation  
+
+**TT** — Typical–Typical Process Corner  
+
+**UGB** — Unity-Gain Bandwidth  
+
+**V** — Volt  
+**$V_{DS}$** — Drain–Source Voltage  
+**$V_{GS}$** — Gate–Source Voltage  
+**$V_{IN}^{+}$** — Non-inverting Input Voltage  
+**$V_{IN}^{−}$** — Inverting Input Voltage  
+**$V_{OUT}$** — Output Voltage  
+**$V_{REF}$** — Reference Voltage  
+
+**W** — Channel Width  
+**W/L** — Width-to-Length Ratio  

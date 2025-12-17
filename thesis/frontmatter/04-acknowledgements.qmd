@@ -1,0 +1,10 @@
+# Acknowledgement {.unnumbered .unlisted}
+
+We would like to express our heartfelt gratitude to Prof. Dr.-Ing. Mirco Meiners for his exceptional guidance, patience, and trust throughout the course of this thesis. From the very beginning, he believed in our potential even more strongly than we did ourselves, and he continuously encouraged us to explore, question, and grow as independent designers.
+
+There is one sentence he once told us that has stayed with us throughout the entire journey:
+“I will make sure you don’t drown, but I will let you swim freely.”
+This perfectly captures his mentoring philosophy  giving us the freedom to learn on our own, while always providing a safety net when it truly mattered. It is this balance of independence and support that shaped not only our work, but also our confidence as young engineers.
+
+We are deeply grateful for his trust, his insightful feedback, and the countless ways in which he motivated us to push our limits. Working under his supervision has been an inspiring experience, and we feel genuinely privileged to have learned from him.
+

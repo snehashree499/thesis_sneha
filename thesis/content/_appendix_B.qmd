@@ -1,0 +1,6 @@
+# Final Chip Layout
+
+
+
+![Final PMOS OTA after adding fillers](../figures/_fig_PMOS_with_fillers.pdf){#fig-pmos height="100%"}
+

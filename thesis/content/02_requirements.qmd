@@ -1,0 +1,33 @@
+# Requirements
+ 
+A switch-mode LED driver IC needs to be designed to operate within an 18–36 V input range, support high-resolution
+(16-bit) PWM dimming for at least four RGBW channels with adjustable current control (1–40 mA), integrate protection
+features (ESD, over/under-voltage, over-temperature), and enable robust data communication with upstream and downstream
+ICs. The IC must also include an internal oscillator (≥25 MHz), internal generation of data line supply (3–5 VDC), and
+advanced diagnostics such as LED error detection.
+
+## Topology Selection:
+
+To meet the defined performance and protection requirements efficiently, a buck converter topology has been selected for
+the LED driver IC. This choice is based on the analysis and recommendations from Bernhard Wicht’s 2020 paper **Analog
+Building Blocks for DC-DC Converters,** @wicht2020 which highlights the buck converter as a suitable and
+energy-efficient architecture for step-down voltage regulation in integrated power management systems. Given the input
+voltage range of 18–36 V and the need for tightly regulated current control per channel (1–40 mA), the buck converter
+enables high efficiency and compact implementation. Its compatibility with mixed-signal integration and the ability to
+support precise current regulation and fast transient response makes it well aligned with the requirements of our LED
+driver IC, particularly in ensuring reliable performance across varying input conditions and thermal loads.
+
+## Block Diagram
+
+![Block Diagram[@wicht2020]](../figures/_fig_BlockDiagram.png){#fig-block-diagram}
+
+\clearpage
+
+| Block                                          | Function                                              |
+|------------------------------------------------|-------------------------------------------------------|
+| Power Stage Interface                          | Inductor-Capacitor Buck output stage                  |
+| PWM Generator                                  | Ramp + Comparator                                     |
+| Error Amplifier                                | Feedback loop, V_ref vs V_out                         |
+| Current Control                                | Per channel analog regulation (DAC + current sink)    |
+| Thermal + Voltage protections                  | Shutdown to over-temperature, over and under voltages |
+| Biasing, reference circuits, reference sources | Bandgap or bias current                               |

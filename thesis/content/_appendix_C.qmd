@@ -1,0 +1,40 @@
+# USB-Stick and Script Referencing
+
+All directory structures and file paths presented in this appendix are intentionally simplified. They are provided to clarify the organization of the project and to indicate where specific scripts, netlists, verification outputs, and layout files can be found within the design environment.
+
+```t
+thesis_hp/
+├── .gitattributes
+├── .gitignore
+├── _book/
+├── _quarto/
+├── _quarto.yml
+├── _bibliography
+├── _manuscript
+├── index.qmd             # Main project page / Abstract
+├── README.md
+├── references.qmd
+├── KNOWN_ISSUES.md
+├── cace/                 # CACE setup for corner alaysis, PVT, MonteCarlo.
+├── content/              # contains all the .qmd files for documentation
+├── Designs/              # Top-level Design Folder
+│   ├── 1_schematics/     # (Design subfolder: Circuit schematics)
+        ├── otas/          # contains .sch files of otas
+│   ├── 2_layout/         # (Design subfolder: Physical layout files)
+        ├── tapeout/
+            ├── final_layout_before_fillering/   # final gds files
+│   └── 3_kpex/           # (Design subfolder: Extracted parasitic netlists)
+├── Expose_HP/            
+├── figures/              # contains all the figues for documentation
+├── layout_scripts/       # DRC Error Check and Minimum Finger Estimation scripts
+├── Literature/           # References or literature review material
+├── python_codes/         # Python scripts to plot raw data
+├── sizing/
+    ├── matlab/            # contains matlab codes for lookup tables 
+    ├── python/            # sizing using pygmid tool and python scripts for sizing
+    ├── xschem/            # contains testbenches on mosfets to Extract data  
+                          # provided by foundry to use them for gm id method
+├── simulations/          # Folder for .spice files and .raw outputs
+└── postlayout_simulations/   # Post-Layout Simulation results/setup
+
+```
