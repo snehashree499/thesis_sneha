@@ -6,7 +6,7 @@ book:
   title: "Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lightning with Open-Source Tools"
   author:
     - name: "Sneha Shree Katepalli"
-      email: "sskatepalli@hs-bremen.de"
+      email: "skatepalli@hs-bremen.de"
       orcid: ""
       corresponding: true
       roles: "Lead author"
