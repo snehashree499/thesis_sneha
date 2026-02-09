@@ -1,6 +1,6 @@
 # Work Packages
 
-## WP1 – Requirements Analysis and Reference Study
+## Requirements Analysis and Reference Study
 
 - Extract and refine the digital requirements from the AES kick-off document and discussions.
 
@@ -8,7 +8,7 @@
 
 - Identify constraints coming from the SG13G2 technology such as clock restrictions, IO conditions, and available supply domains.
 
-## WP2 – Behavioural Modelling (Matlab/Simulink + HDL Coder)
+## Behavioural Modelling (Matlab/Simulink + HDL Coder)
 
 - Develop a high-level model that describes the expected digital behaviour of the driver.
 
@@ -16,19 +16,19 @@
 
 - Compare model behaviour against the expected reference operation.
 
-## WP3 – Digital Micro-Architecture in SystemVerilog
+## Digital Micro-Architecture in SystemVerilog
 
 - Translate the behavioural model and requirements into a synthesizable RTL design.
 
 - Follow Posy’s coding style and general digital design best practices.
 
-## WP4 – FPGA Prototyping and Experimental Validation
+## FPGA Prototyping and Experimental Validation
 
 - Use cocotb to create a testbench and verify the RTL design in simulation.
 
 - Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.
 
-## WP5 – Documentation
+## Documentation
 
 - Write the complete thesis manuscript in Quarto, following the Thesis Style Guide of Hochschule Bremen.
 

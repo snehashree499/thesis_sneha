@@ -16,7 +16,7 @@ author:
 
 output-file: expose_ssk
 
-date: "Feb. 9th, 2026"
+date: "02-09-2026"
 date-format: "MMMM YYYY"
 # license: "Apache-2.0 license"
 
@@ -30,7 +30,7 @@ page-footer:
 # cover-image: images/hsb-logo.png
 # favicon: images/hsb-logo.png
 # site-url: https://sneha.github.io/thesis
-# repo-url: https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha
+repo-url: https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha
 repo-branch: main
 repo-actions: [edit,issue]
 downloads: [pdf]
