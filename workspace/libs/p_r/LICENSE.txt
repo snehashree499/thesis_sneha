@@ -1,0 +1,53 @@
+p_r – Freeware License
+
+Copyright © 1994-2025 Cologne Chip AG
+
+This License Agreement ("Agreement") governs the use of the software known as p_r ("Software"). By downloading, installing, or using the Software, you ("User") agree to the following terms:
+
+1. Grant of License
+
+Cologne Chip grants you a non-exclusive, non-transferable, royalty-free license to use the Software for any purpose, including academic, personal, or commercial use, subject to the conditions below.
+
+2. Permissions
+
+Under this license, you are permitted to:
+
+    Use the Software freely;
+
+    Reverse engineer or analyze the Software for research, learning, or interoperability purposes;
+
+    Modify or build internal tools around the Software for personal or organizational use.
+
+    Take inspiration from the Software’s behavior or architecture for educational or open-source development purposes.
+
+3. Restrictions
+
+You may not:
+
+    Redistribute the Software or any portion of it in original or modified form;
+
+    Offer the Software as a service or embed it in another product without explicit written permission;
+
+    Use the Software or its components directly in the development of a competing commercial tool or service.
+
+4. Ownership
+
+This Software is licensed, not sold. All rights, title, and intellectual property in the Software remain with Cologne Chip. You do not acquire any ownership rights through this license.
+
+5. Warranty Disclaimer
+
+The Software is provided "as is", without warranty of any kind. Cologne Chip disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement.
+
+6. Limitation of Liability
+
+Under no circumstances shall Cologne Chip be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the Software.
+
+7. Termination
+
+This license terminates automatically if you violate any of its terms. Upon termination, you must cease all use of the Software and delete all copies in your possession.
+
+Contact for questions or permission requests, contact:
+
+Cologne Chip AG
+Eintrachtstr. 113, 50668 Köln
+mailto:support@colognechip.com
