@@ -4,14 +4,18 @@ EXE =
 
 ## toolchain
 YOSYS = yosys$(EXE)
-PR    = p_r$(EXE)
-OFL   = openFPGALoader$(EXE)
+PR = nextpnr-himbaechel$(EXE)
+OFL = openFPGALoader$(EXE)
+OFLFLAGS = --freq 6M
+GMP = gmpack
 
 GTKW = gtkwave
+SURF = surfer
 IVL = iverilog
 VVP = vvp
 IVLFLAGS = -g2012 -gspecify -Ttyp
 GHDL = ghdl
+VERI = verilator
 
 ## simulation libraries
 CELLS_SYNTH = ./libs/yosys/cells_sim.v
@@ -28,24 +32,30 @@ RM = rm -rf
 synth: synth_vlog
 
 synth_vlog: $(VLOG_SRC)
-	$(YOSYS) -qql log/synth.log -p 'read_verilog -sv $^; synth_gatemate -top $(TOP) -nomx8 -vlog net/$(TOP)_synth.v'
+	$(YOSYS) -ql log/synth.log -p 'read_verilog -sv $^; synth_gatemate -top $(TOP) -luttree -nomx8 -vlog net/$(TOP)_synth.v; write_json net/$(TOP)_net.json'
 
 synth_vhdl: $(VHDL_SRC)
-	$(YOSYS) -ql log/synth.log -p 'ghdl --warn-no-binding -C --ieee=synopsys $^ -e $(TOP); synth_gatemate -top $(TOP) -nomx8 -vlog net/$(TOP)_synth.v'
+#	$(YOSYS) -ql log/synth.log -p 'ghdl --warn-no-binding -C --ieee=synopsys $^ -e $(TOP); synth_gatemate -top $(TOP) -nomx8 -vlog net/$(TOP)_synth.v;  write_json net/$(TOP)_net.json'
+	$(GHDL) synth -fexplicit -fsynopsys --out=verilog $^ -e $(TOP)
 
 impl:
-	$(PR) -i net/$(TOP)_synth.v -o $(TOP) $(PRFLAGS) > log/$@.log
+#	$(PR) -i net/$(TOP)_synth.v -o $(TOP) $(PRFLAGS) > log/$@.log
+	$(PR) --device CCGM1A1 --json net/$(TOP)_net.json -o ccf=$(TOP).ccf -o out=$(TOP)_impl.txt --router router2
 
 jtag:
+	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
 	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag $(TOP)_00.cfg
 
 jtag-flash:
+	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg	
 	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag -f --verify $(TOP)_00.cfg
 
 spi:
+	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
 	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -m $(TOP)_00.cfg
 
 spi-flash:
+	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
 	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -f --verify $(TOP)_00.cfg
 
 all: synth impl jtag
