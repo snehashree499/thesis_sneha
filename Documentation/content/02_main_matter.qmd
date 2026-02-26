@@ -29,7 +29,7 @@ To prevent flickering, each IC has a minimum frequency of ≥ 370 Hz (ideally > 
 
 The current prototype implementation of the AES daisy-chainable LED driver concept for a single light segment is shown in @fig-LEDstrip. The segment is one modular unit in a chain of segments, each of which can apply local LED settings, receive control data, and then send the remaining data to the next segment.
 
-![LED Segment Architecture](/figures/_fig_LED_strip.svg){#fig-LEDstrip}
+![LED Segment Architecture](/figures/_fig_LEDstrip.svg){#fig-LEDstrip}
 
 A microcontroller (STM32C011) serving as the digital control core is positioned in the middle of the section. The microcontroller in the current internal implementation carries out the identical logical tasks that the digital subsystem of the future LED driver IC is anticipated to accomplish in hardware. Using PWM outputs, the microcontroller powers four "LED Driver" blocks. These driver blocks serve as the analog/power interface, which uses switching or current-regulated sinks to translate the digital PWM signal into controlled LED current.
 

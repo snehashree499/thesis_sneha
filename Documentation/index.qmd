@@ -1,5 +1,5 @@
 ---
-title: "Design and FPGA-Based Prototyping of a Daisy-Chainable LED Driver System for Aircraft Cabin Lighting Using Open-Source EDA Tools"
+title: "Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lightning with Open-Source Tools"
 author:
   - name: "Sneha Shree Katepalli"
     email: "skatepalli@hs-bremen.de"
@@ -24,7 +24,7 @@ reader-mode: true
 
 page-footer:
   left: |
-    Design and FPGA-Based Prototyping of a Daisy-Chainable LED Driver System for Aircraft Cabin Lighting Using Open-Source EDA Tools
+    Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lightning with Open-Source Tools
   right: |
     This book was built with <a href="https://quarto.org/">Quarto</a>.
 # cover-image: images/hsb-logo.png
@@ -44,7 +44,10 @@ highlight-style: pygments
 
 ---
 
-{{< include /content/01_front_matter.qmd >}}
-{{< include /content/02_main_matter.qmd >}}
-{{< include /content/03_back_matter.qmd >}}
-
+{{< include /content/_sec_intro.qmd >}}
+{{< include /content/_sec_probstatement.qmd >}}
+{{< include /content/_sec_objectives.qmd >}}
+{{< include /content/_sec_approach.qmd >}}
+{{< include /content/_sec_wp.qmd >}}
+{{< include /content/_sec_expec_res.qmd >}}
+{{< include /content/_sec_Timeline.qmd >}}
