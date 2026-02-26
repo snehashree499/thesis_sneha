@@ -5,5 +5,16 @@
     "index.tex": "b7a44fe9",
     "expose_sneha.html": "334f4daa",
     "expose_ssk.html": "3266d88b"
+  },
+  "content/01_front_matter.qmd": {
+    "01_front_matter-preview.html": "917d7873"
+  },
+  "content/02_main_matter.qmd": {
+    "02_main_matter-preview.html": "757b7f70",
+    "02_main_matter.embed.ipynb": "af252002",
+    "02_main_matter.out.ipynb": "bf42796d"
+  },
+  "content/03_back_matter.qmd": {
+    "03_back_matter-preview.html": "6e087c37"
   }
 }

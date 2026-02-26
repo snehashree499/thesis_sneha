@@ -1,0 +1,175 @@
+# Introduction
+
+LED driver systems are widely used in lighting, displays, automotive applications, and many embedded systems. In modern aircraft, LED lighting systems are used for cabin illumination, safety lighting, signage, and many other functions. These systems must be highly reliable, efficient, and suitable for the demanding conditions of aviation. Subsystems for aircraft lighting must combine minimal weight, precision optical control, simplified wiring, and excellent dependability. Conventional methods frequently use many parallel control lines and centrally controlled drivers; however, the wiring overhead increases dramatically as the number of individually controllable segments increases. A scalable approach that keeps the connection complexity almost constant as more segments are added is the daisy-chainable segment concept, in which each segment receives data, applies local settings, and passes the remaining data downstream.
+
+Mixed-signal LED drivers combine analog current-driving circuits with digital control logic. The digital part is responsible for controlling PWM (Pulse-Width Modulation), managing configuration registers, coordinating interfaces, and ensuring correct timing behaviour. AES’s baseline concept specifies an LED driver IC operating from 18–36 V  is required to manage at least four channels with separately adjustable channel currents, low-side PWM, and 16-bit dimming precision. Perceptual simultaneity is a crucial system constraint. The 25th IC should have completed reception within 25 ms from the time the first IC begins receiving, so that the change appears simultaneous to human observers. The internal requirements report further details an initial digital approach using UART I/O with custom framing mechanism, forming the starting point for this thesis’ digital design and validation. 
+
+The proposed AES LED driver constitutes a mixed-signal integrated system combining digital communication and control logic with precision analog current regulation and power management. This thesis focuses on the design and validation of the digital subsystem within this mixed-signal architecture. 
+
+# Background and related work
+
+The principle of the suggested system is comparable to addressable LED strip paradigms (such as WS2812-class devices) in that every node forwards the remaining data after consuming its own payload. AES's idea, on the other hand, is very different since it targets aircraft power ranges (18–36 V), necessitates per-channel adjustable current and higher-precision dimming (16-bit) rather than typical 8-bit color control. The AES internal report compares WS2812B/ECO with other daisy-chainable control techniques, such as SPI-like interfaces and shift-register-based devices, and specifically mentions it as a similar commercial concept (single-wire, timing-encoded stream).
+
+This thesis makes use of an open-source FPGA CAD flow for implementation. Nextpnr offers open-source place-and-route for several FPGA designs, and Yosys is a popular open-source Verilog synthesis framework. According to GateMate's published materials, its open ecosystem includes support for Yosys, nextpnr, and openFPGALoader.
+
+# System explanation and proposed architecture
+
+## System-Level Daisy-Chain Architecture of the AES LED Driver IC
+
+The system-level architecture of the suggested AES daisy-chainable LED driver solution is shown in @fig-MDSA. The design seeks to achieve modular scalability, high-resolution dimming, and minimal wiring complexity for aircraft lighting segments powered by an 18–36 V electrical system. The internal "Requirements for the digital aspect & current internal implementation" report and the AES-ranked idea wishlist (Bronze/Silver/Gold) are the sources of the baseline objectives. According to these documents, the device must support 16-bit dimming, have at least four PWM channels for RGBW, be daisy-chainable with few data lines, and guarantee that even the 25th device in the chain completes reception in less than 25 ms to maintain perceptual simultaneity throughout the installation.
+
+![System-Level Architecture of the AES LED Driver IC](/figures/_fig_MultiSegDSA.svg){#fig-MDSA}
+
+The @fig-MDSA shows multiple identical IC nodes (labeled “AES-IC0815”) connected in series. Each node represents one segment controller/driver IC that interfaces to local LEDs and participates in the daisy-chain. A series connection of several identical LED driver IC nodes makes up the system. After receiving a serial control data stream and a high-voltage LED supply, each node extracts its local brightness values, creates PWM signals for RGBW channels, powers local LEDs, and transmits the remaining data downstream.
+Communication follows a framed serial protocol (UART baseline in the current implementation). Each segment forwards the remaining frame after extracting two bytes from each colour channel (16-bit RGBW → 8 bytes total) and storing the contents locally. To preserve perceptual simultaneity, the data rate must guarantee that even the 25th device in the chain completes reception in less than 25 ms.
+
+To prevent flickering, each IC has a minimum frequency of ≥ 370 Hz (ideally > 400 Hz) and at least four PWM channels with 16-bit resolution. Control of individual channel current is also necessary.
+
+## Light Segment Architecture
+
+The current prototype implementation of the AES daisy-chainable LED driver concept for a single light segment is shown in @fig-LEDstrip. The segment is one modular unit in a chain of segments, each of which can apply local LED settings, receive control data, and then send the remaining data to the next segment.
+
+![LED Segment Architecture](/figures/_fig_LED_strip.svg){#fig-LEDstrip}
+
+A microcontroller (STM32C011) serving as the digital control core is positioned in the middle of the section. The microcontroller in the current internal implementation carries out the identical logical tasks that the digital subsystem of the future LED driver IC is anticipated to accomplish in hardware. Using PWM outputs, the microcontroller powers four "LED Driver" blocks. These driver blocks serve as the analog/power interface, which uses switching or current-regulated sinks to translate the digital PWM signal into controlled LED current.
+
+According to the AES specifications, low-side PWM must be used internally as a baseline and each colour channel must enable independent current control (either internally or through the use of a pre-resistor).
+
+The LED strings are powered by an LED voltage rail, which is derived from the 18–36 V aircraft supply. The digital components are powered by a 3.3 V logic rail. The final IC concept's high-voltage input must internally create the data-line supply (3–5 V) in accordance with the specifications. Dedicated LED driver stages use low-side switching to transform PWM signals into regulated LED current. To prevent noticeable flicker, each channel must support independently controllable current (2–20 mA) with high-resolution dimming and a minimum PWM frequency ≥370 Hz (baseline >400 Hz).
+
+# Thesis Focus
+
+The thesis focuses on the Digital Control & Forwarding Subsystem, the enabling element that converts a basic LED driver into a scalable, addressable network of segments.
+The digital functionality in the prototype is implemented using the STM32 microcontroller. The creation of a specialised digital control and forwarding architecture that substitutes an FPGA/IC-ready design for the microcontroller is the main goal of this thesis. The design and validation of the register architecture, communication logic, deterministic forwarding engine, and 16-bit PWM generator to satisfy AES timing, scalability, and precision requirements in a mixed-signal LED driver system constitutes the contribution.
+
+# Requirements 
+
+The requirements are derived from industrial specification documents provided by AES. The specification categorizes features into Bronze (baseline), Silver (optional), and Gold (advanced) levels. In this thesis, the Bronze-level requirements are adopted as the mandatory design baseline. Silver- and Gold-level requirements are not implemented and are considered only as potential extensions for future work.
+
+## (Bronze-Level) Requirements
+
+- Support for at least four LED channels (e.g., RGBW)
+- 16-bit dimming resolution per channel
+- Brightness control via low-side PWM
+- PWM frequency > 400 Hz to prevent visible flicker
+- Independent configuration of each channel
+- Configuration data shall be stored internally until changed
+- Daisy-chain capability with identical input and output interfaces
+- Update latency such that the 25th IC in the chain updates within < 25 ms
+- Configuration via synchronous serial data from an external controller
+- Data interface voltage range of 3 V to 5 V
+- Operation from an 18 V to 36 V supply, without directly supplying LED power
+- Emphasis on low power digital operation
+  
+# Toolchain Used
+
+A organised, multi-level toolchain process covering system-level modelling, hardware description, synthesis, physical implementation, and in-circuit validation is used to design the digital subsystem for the suggested daisy-chainable LED driver IC. This multi-tiered strategy guarantees that the implementation is not only functionally accurate but also reproducible, verifiable, and appropriate for ASIC translation in the future.
+
+The thesis development workflow follows a reproducible sequence:
+
+- System-Level Modeling (MATLAB/Simulink)
+- RTL Entry (Verilog/SystemVerilog; optionally VHDL front-end if required)
+- Synthesis with Yosys
+- Place-and-route with nextpnr
+- Programming and in-circuit testing using openFPGALoader
+
+# Use of GateMate FPGA and its role in this thesis
+
+Reproducibility, scripting, and transparent analysis of tool outputs are made possible by GateMate's support for an open toolchain ecosystem, which includes Yosys for synthesis, nextpnr for place-and-route, and openFPGALoader for device programming. The Cologne Chip documentation emphasizes toolchain packaging and availability via integrated builds that include the required components. Given that the end goal is an IC concept, FPGA prototyping functions as an intermediate step that bridges specification and silicon-level implementation.
+
+# Use of AI (University Chat AI) in the thesis
+
+In this thesis, University Chat AI is will be used as a structured productivity and research support tool to methodically investigate and assess several large language models (LLMs) for engineering help in the digital design workflow.
+
+# Problem statement
+
+The design of a digital subsystem that ensures precise local PWM control and deterministic, low-overhead daisy-chain forwarding under strict timing constraints is still a major issue, even if the high-level requirements are clear. 16-bit dimming, minimum PWM frequency, minimal wiring, and the 25-segment simultaneity limitation must all be met by the system. The digital architecture must also provide optional status/response pathways without sacrificing throughput and specify clear interfaces for per-channel current regulation.
+
+Therefore, the problem addressed in this thesis is: 
+
+**To use an open-source toolchain to develop, prototype, and test a Digital Control & Forwarding Subsystem that satisfies requirements for a daisy-chainable RGBW LED driver idea, proving accuracy, timing closure, and scalability on an FPGA platform.**
+
+# Work packages
+
+The thesis work is organized into the following coherent work packages:
+
+## WP1 — Requirements analysis and traceability
+
+- Extract functional and performance requirements from AES documents.
+- Formalize latency constraints (25 segments < 25 ms).
+- Define PWM frequency and resolution constraints.
+- Define UART framing requirements.
+
+## WP2 - MATLAB/Simulink System-Level Modeling
+
+  The implementation of RTL comes after this work package.
+- Develop Simulink model of UART stream and frame structure.
+- Model 25-segment chain.
+- Simulate worst-case frame length.
+- Model 16-bit PWM behavior and verify frequency > 370 Hz.
+- Perform parameter sweeps (data rate vs latency).
+
+The Simulink model implements the communication protocol described in the digital requirements, including Start-of-Frame (SoF) and End-of-Frame (EoF) detection, payload extraction of two bytes per color channel, and the mechanism in which each segment removes its eight data bytes and forwards the remaining message. A chain of up to 25 virtual segments is modeled to evaluate cumulative forwarding delay and confirm compliance with the 25 ms simultaneity requirement.
+
+## WP3 - RTL Implementation
+
+This work package consists of implementing the digital architecture in synthesizable RTL (Verilog/SystemVerilog). The design is modularized into clearly separated components: communication interface, parsing logic, forwarding control, configuration registers, and PWM core.
+
+## WP4 – FPGA Prototyping and Experimental Validation
+
+- Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.
+
+The validated RTL design is synthesized and implemented on the GateMate FPGA using Yosys for synthesis and nextpnr for place-and-route. Timing closure is analyzed to ensure that clock frequency and UART timing meet requirements. The generated bitstream is programmed onto the FPGA, and hardware measurements are performed.
+
+## WP5 – Documentation, Evaluation, and Final Analysis
+
+The final work package incorporates findings from every step of the process into a thorough assessment of the thesis. Simulink predictions and RTL simulation results are contrasted with measured hardware performance. Analysis and explanation are provided for deviations.
+- Write the complete thesis manuscript in Quarto, following the Thesis Style Guide of Hochschule Bremen.
+
+- Include diagrams, results, verification data, and clear explanations of all design decisions.
+
+# Timeline and Project Planning
+
+In order to reflect the natural progression from requirements study to tested FPGA prototype and final documentation, the project is organised into phases that are sequential yet partially overlap.
+
+## Phase 1: Requirements Consolidation and System-Level Modeling(March 2026 – Mid April 2026)
+
+Formalising and organising the requirements taken from the AES concept brief and digital aspect definition is the main goal of the first phase. These consist of the UART protocol features, daisy-chain capabilities, minimum PWM frequency constraint, 16-bit PWM requirement, and 25-segment latency constraint.
+
+Deliverables:
+
+- Simulink system-level model
+- Latency analysis report
+- PWM frequency validation report
+
+## Phase 2: RTL Implementation(Mid April 2026 – End of May 2026)
+
+The system-level model will be validated before the digital microarchitecture is explicitly developed. Synthesizable Verilog modules will be written in a modular and portable format suitable for FPGA implementation and future ASIC translation.
+
+Deliverables:
+
+- Complete synthesizable RTL source code
+- RTL simulation results
+- Cross-validation report (Simulink vs RTL)
+
+## Phase 3: FPGA Implementation and Hardware Validation(June 2026 – Mid July 2026)
+
+During this stage, the RTL design will be inserted and routed for the GateMate FPGA platform using nextpnr and synthesised using Yosys. To make sure that UART timing and PWM frequency limits are met, timing closure will be examined. Once bitstream generation is successful, openFPGALoader will be used to program the design into the FPGA.
+
+Deliverables:
+
+- Synthesized netlist and timing reports
+- FPGA bitstream
+- Hardware measurement report
+- Latency validation report (measured vs simulated)
+
+## Phase 4: Optimization, Evaluation, and Documentation(Mid July 2026 – August 2026)
+
+Refinement, documentation, and thesis preparation are the main objectives of the last stage. Any disparities found during hardware validation will be examined and, if required, fixed.
+
+Deliverables:
+
+- Final verified RTL implementation
+- Requirement traceability matrix
+- Complete thesis manuscript
+- Final presentation material

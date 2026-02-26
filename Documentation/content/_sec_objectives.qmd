@@ -1,9 +1,0 @@
-# Objectives
-
-1. To clearly understand and document all digital requirements of the LED driver system.
-2. To study the LED1642GW device as a reference for architecture and behaviour.
-3. To analyse the limitations and constraints of the SG13G2 process technology.
-4. To develop a behavioural model using Matlab/Simulink and HDL Coder.
-5. To design the digital micro-architecture in SystemVerilog following proper coding guidelines.
-6. To build a verification setup using cocotb and test the design on a GateMate FPGA.
-7. To document the complete thesis using Quarto that explains the design, methodology, and results.

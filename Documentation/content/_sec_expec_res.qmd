@@ -1,9 +1,0 @@
-# Expected Results
-
-The thesis is expected to deliver:
-
-- A detailed digital requirements document co-developed with AES.
-- A behavioural model of the LED driver digital subsystem.
-- A synthesizable SystemVerilog design of the LED driver digital subsystem.
-- Verification and test results from cocotb and FPGA prototyping.
-- A complete thesis manuscript with clear documentation and conclusions.
