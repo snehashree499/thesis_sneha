@@ -4,48 +4,36 @@ project:
 manuscript:
   article: index.qmd
 
+execute:
+  freeze: auto
+
 format:
   html:
     theme: flatly
     fontsize: 1.2em
     linestretch: 1.7
-    # mainfont: Helvetica Neue, Helvetica, Arial, sans
-    # monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
-    # backgroundcolor: "white"
-    # fontcolor: "black"
-    highlight-style: github
-
+    
   pdf:
-    documentclass: scrartcl
-    # classoption: [twoside]
-    keep-tex: true
+    documentclass: scrreprt # scrartcl
+    # lof: true
+    # lot: true
+    toc: true
 
-    papersize: a4
-           
-    # geometry:
-      # - inner=3cm
-      # - outer=4cm
-      # - top=2.5cm
-      # - bottom=2.5cm
-      # - left=3cm
-      # - right=1.5cm
-      # - headsep=22pt
-      # - headheight=11pt
-      # - footskip=33pt
-      # - ignorehead
-      # - ignorefoot
-      # - heightrounded
+    # keep-tex: true
+    pdf-engine: xelatex
+    
+    papersize: a4 
+    geometry:
+      - top=30mm
+      - left=20mm
+      - heightrounded
 
-    hyperrefoptions: 
+    hyperrefoptions:
       - linktoc=all
     colorlinks: true
     linkcolor: "blue"
-
+    
+    biblio-style: ieee
+    
+    mainfont: "Calibri"
     fontsize: 11pt
-    pdfengine: xelatex
-
-    # Fonts
-    # mainfont: "Latin Modern Roman"
-    # sansfont: "Arial"
-    # monofont: "Courier New"
-    # mathfont: "TeX Gyre Termes Math"
