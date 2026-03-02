@@ -12,12 +12,12 @@ format:
     theme: flatly
     fontsize: 1.2em
     linestretch: 1.7
-    
+
   pdf:
-    documentclass: scrreprt # scrartcl
+    documentclass: scrartcl # scrreprt 
     # lof: true
     # lot: true
-    toc: true
+    # toc: true
 
     # keep-tex: true
     pdf-engine: xelatex
@@ -30,6 +30,7 @@ format:
 
     hyperrefoptions:
       - linktoc=all
+      
     colorlinks: true
     linkcolor: "blue"
     

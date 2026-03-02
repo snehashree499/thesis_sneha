@@ -42,11 +42,9 @@ The LED strings are powered by an LED voltage rail, which is derived from the 18
 The thesis focuses on the Digital Control & Forwarding Subsystem, the enabling element that converts a basic LED driver into a scalable, addressable network of segments.
 The digital functionality in the prototype is implemented using the STM32 microcontroller. The creation of a specialised digital control and forwarding architecture that substitutes an FPGA/IC-ready design for the microcontroller is the main goal of this thesis. The design and validation of the register architecture, communication logic, deterministic forwarding engine, and 16-bit PWM generator to satisfy AES timing, scalability, and precision requirements in a mixed-signal LED driver system constitutes the contribution.
 
-# Requirements 
+## Requirements 
 
 The requirements are derived from industrial specification documents provided by AES. The specification categorizes features into Bronze (baseline), Silver (optional), and Gold (advanced) levels. In this thesis, the Bronze-level requirements are adopted as the mandatory design baseline. Silver- and Gold-level requirements are not implemented and are considered only as potential extensions for future work.
-
-## (Bronze-Level) Requirements
 
 - Support for at least four LED channels (e.g., RGBW)
 - 16-bit dimming resolution per channel
@@ -61,7 +59,7 @@ The requirements are derived from industrial specification documents provided by
 - Operation from an 18 V to 36 V supply, without directly supplying LED power
 - Emphasis on low power digital operation
   
-# Toolchain Used
+## Toolchain Used
 
 A organised, multi-level toolchain process covering system-level modelling, hardware description, synthesis, physical implementation, and in-circuit validation is used to design the digital subsystem for the suggested daisy-chainable LED driver IC. This multi-tiered strategy guarantees that the implementation is not only functionally accurate but also reproducible, verifiable, and appropriate for ASIC translation in the future.
 
@@ -73,15 +71,15 @@ The thesis development workflow follows a reproducible sequence:
 - Place-and-route with nextpnr
 - Programming and in-circuit testing using openFPGALoader
 
-# Use of GateMate FPGA and its role in this thesis
+## Use of GateMate FPGA and its Role in this Thesis
 
 Reproducibility, scripting, and transparent analysis of tool outputs are made possible by GateMate's support for an open toolchain ecosystem, which includes Yosys for synthesis, nextpnr for place-and-route, and openFPGALoader for device programming. The Cologne Chip documentation emphasizes toolchain packaging and availability via integrated builds that include the required components. Given that the end goal is an IC concept, FPGA prototyping functions as an intermediate step that bridges specification and silicon-level implementation.
 
-# Use of AI (University Chat AI) in the thesis
+## Use of AI (University Chat AI) in the Thesis
 
 In this thesis, University Chat AI is will be used as a structured productivity and research support tool to methodically investigate and assess several large language models (LLMs) for engineering help in the digital design workflow.
 
-# Problem statement
+## Problem statement
 
 The design of a digital subsystem that ensures precise local PWM control and deterministic, low-overhead daisy-chain forwarding under strict timing constraints is still a major issue, even if the high-level requirements are clear. 16-bit dimming, minimum PWM frequency, minimal wiring, and the 25-segment simultaneity limitation must all be met by the system. The digital architecture must also provide optional status/response pathways without sacrificing throughput and specify clear interfaces for per-channel current regulation.
 
@@ -89,50 +87,51 @@ Therefore, the problem addressed in this thesis is:
 
 **To use an open-source toolchain to develop, prototype, and test a Digital Control & Forwarding Subsystem that satisfies requirements for a daisy-chainable RGBW LED driver idea, proving accuracy, timing closure, and scalability on an FPGA platform.**
 
-# Work packages
+## Work packages
 
 The thesis work is organized into the following coherent work packages:
 
-## WP1 — Requirements analysis and traceability
+- WP1 — Requirements analysis and traceability
 
-- Extract functional and performance requirements from AES documents.
-- Formalize latency constraints (25 segments < 25 ms).
-- Define PWM frequency and resolution constraints.
-- Define UART framing requirements.
+    - Extract functional and performance requirements from AES documents.
+    - Formalize latency constraints (25 segments < 25 ms).
+    - Define PWM frequency and resolution constraints.
+    - Define UART framing requirements.
 
-## WP2 - MATLAB/Simulink System-Level Modeling
+- WP2 - MATLAB/Simulink System-Level Modeling
 
-  The implementation of RTL comes after this work package.
-- Develop Simulink model of UART stream and frame structure.
-- Model 25-segment chain.
-- Simulate worst-case frame length.
-- Model 16-bit PWM behavior and verify frequency > 370 Hz.
-- Perform parameter sweeps (data rate vs latency).
+    The implementation of RTL comes after this work package.
+    - Develop Simulink model of UART stream and frame structure.
+    - Model 25-segment chain.
+    - Simulate worst-case frame length.
+    - Model 16-bit PWM behavior and verify frequency > 370 Hz.
+    - Perform parameter sweeps (data rate vs latency).
 
 The Simulink model implements the communication protocol described in the digital requirements, including Start-of-Frame (SoF) and End-of-Frame (EoF) detection, payload extraction of two bytes per color channel, and the mechanism in which each segment removes its eight data bytes and forwards the remaining message. A chain of up to 25 virtual segments is modeled to evaluate cumulative forwarding delay and confirm compliance with the 25 ms simultaneity requirement.
 
-## WP3 - RTL Implementation
+- WP3 - RTL Implementation
 
 This work package consists of implementing the digital architecture in synthesizable RTL (Verilog/SystemVerilog). The design is modularized into clearly separated components: communication interface, parsing logic, forwarding control, configuration registers, and PWM core.
 
-## WP4 – FPGA Prototyping and Experimental Validation
+- WP4 – FPGA Prototyping and Experimental Validation
 
-- Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.
+    - Prototype the design on a GateMate FPGA and validate behaviour under real hardware conditions.
 
 The validated RTL design is synthesized and implemented on the GateMate FPGA using Yosys for synthesis and nextpnr for place-and-route. Timing closure is analyzed to ensure that clock frequency and UART timing meet requirements. The generated bitstream is programmed onto the FPGA, and hardware measurements are performed.
 
-## WP5 – Documentation, Evaluation, and Final Analysis
+- WP5 – Documentation, Evaluation, and Final Analysis
 
 The final work package incorporates findings from every step of the process into a thorough assessment of the thesis. Simulink predictions and RTL simulation results are contrasted with measured hardware performance. Analysis and explanation are provided for deviations.
 - Write the complete thesis manuscript in Quarto, following the Thesis Style Guide of Hochschule Bremen.
 
-- Include diagrams, results, verification data, and clear explanations of all design decisions.
+    - Include diagrams, results, verification data, and clear explanations of all design decisions.
 
-# Timeline and Project Planning
+## Timeline and Project Planning
 
 In order to reflect the natural progression from requirements study to tested FPGA prototype and final documentation, the project is organised into phases that are sequential yet partially overlap.
 
-## Phase 1: Requirements Consolidation and System-Level Modeling(March 2026 – Mid April 2026)
+
+- Phase 1: Requirements Consolidation and System-Level Modeling(March 2026 – Mid April 2026)
 
 Formalising and organising the requirements taken from the AES concept brief and digital aspect definition is the main goal of the first phase. These consist of the UART protocol features, daisy-chain capabilities, minimum PWM frequency constraint, 16-bit PWM requirement, and 25-segment latency constraint.
 
@@ -142,7 +141,8 @@ Deliverables:
 - Latency analysis report
 - PWM frequency validation report
 
-## Phase 2: RTL Implementation(Mid April 2026 – End of May 2026)
+
+- Phase 2: RTL Implementation(Mid April 2026 – End of May 2026)
 
 The system-level model will be validated before the digital microarchitecture is explicitly developed. Synthesizable Verilog modules will be written in a modular and portable format suitable for FPGA implementation and future ASIC translation.
 
@@ -152,7 +152,8 @@ Deliverables:
 - RTL simulation results
 - Cross-validation report (Simulink vs RTL)
 
-## Phase 3: FPGA Implementation and Hardware Validation(June 2026 – Mid July 2026)
+
+- Phase 3: FPGA Implementation and Hardware Validation(June 2026 – Mid July 2026)
 
 During this stage, the RTL design will be inserted and routed for the GateMate FPGA platform using nextpnr and synthesised using Yosys. To make sure that UART timing and PWM frequency limits are met, timing closure will be examined. Once bitstream generation is successful, openFPGALoader will be used to program the design into the FPGA.
 
@@ -163,7 +164,8 @@ Deliverables:
 - Hardware measurement report
 - Latency validation report (measured vs simulated)
 
-## Phase 4: Optimization, Evaluation, and Documentation(Mid July 2026 – August 2026)
+
+- Phase 4: Optimization, Evaluation, and Documentation(Mid July 2026 – August 2026)
 
 Refinement, documentation, and thesis preparation are the main objectives of the last stage. Any disparities found during hardware validation will be examined and, if required, fixed.
 
