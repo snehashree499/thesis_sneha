@@ -6,8 +6,6 @@ _build
 .Rhistory
 *_cache
 *_files
-_book
-_manuscript
 .quarto
 *.tex
 simulations
@@ -16,3 +14,4 @@ simulations
 _runs
 _manuscript
 _book
+docs

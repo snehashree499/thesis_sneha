@@ -1,11 +1,9 @@
 ## config.mk
 
-EXE =
-
 ## toolchain
-YOSYS = yosys$(EXE)
-PR = nextpnr-himbaechel$(EXE)
-OFL = openFPGALoader$(EXE)
+YOSYS = yosys
+PR = nextpnr-himbaechel
+OFL = openFPGALoader
 OFLFLAGS = --freq 6M
 GMP = gmpack
 
@@ -18,8 +16,8 @@ GHDL = ghdl
 VERI = verilator
 
 ## simulation libraries
-CELLS_SYNTH = ./libs/yosys/cells_sim.v
-CELLS_IMPL = ./libs/p_r/cpelib.v
+CELLS_SYNTH = ../libs/yosys/cells_sim.v
+CELLS_IMPL = ../libs/p_r/cpelib.v
 
 ## target sources
 VLOG_SRC = $(shell find ./src/ -type f \( -iname \*.v -o -iname \*.sv \))
@@ -40,23 +38,22 @@ synth_vhdl: $(VHDL_SRC)
 
 impl:
 #	$(PR) -i net/$(TOP)_synth.v -o $(TOP) $(PRFLAGS) > log/$@.log
-	$(PR) --device CCGM1A1 --json net/$(TOP)_net.json -o ccf=$(TOP).ccf -o out=$(TOP)_impl.txt --router router2
+	$(PR) --device CCGM1A1 --json net/$(TOP)_net.json -o ccf=src/$(TOP).ccf -o out=$(TOP)_impl.txt --router router2
+
+bit:
+	$(GMP) ./$(TOP)_imp.txt $(TOP)_bit.cfg
 
 jtag:
-	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
-	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag $(TOP)_00.cfg
+	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag $(TOP)_bit.cfg
 
 jtag-flash:
-	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg	
-	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag -f --verify $(TOP)_00.cfg
+	$(OFL) $(OFLFLAGS) -b gatemate_evb_jtag -f --verify $(TOP)_bit.cfg
 
 spi:
-	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
-	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -m $(TOP)_00.cfg
+	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -m $(TOP)_bit.cfg
 
 spi-flash:
-	$(GMP) $(TOP)_imp.txt $(TOP)_00.cfg
-	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -f --verify $(TOP)_00.cfg
+	$(OFL) $(OFLFLAGS) -b gatemate_evb_spi -f --verify $(TOP)_bit.cfg
 
 all: synth impl jtag
 
@@ -87,6 +84,7 @@ wave:
 clean:
 	$(RM) log/*.log
 	$(RM) net/*_synth.v
+	$(RM) net/*.json
 	$(RM) *.history
 	$(RM) *.txt
 	$(RM) *.refwire
@@ -104,6 +102,7 @@ clean:
 	$(RM) *.place
 	$(RM) *.pin
 	$(RM) *.cfg*
+	$(RM) *.bit*
 	$(RM) *.cdf
 	$(RM) sim/*.vcd
 	$(RM) sim/*.vvp
