@@ -18,7 +18,7 @@ This thesis makes use of an open-source FPGA CAD flow for implementation. Nextpn
 
 The system-level architecture of the suggested AES daisy-chainable LED driver solution is shown in @fig-MDSA. The design seeks to achieve modular scalability, high-resolution dimming, and minimal wiring complexity for aircraft lighting segments powered by an 18–36 V electrical system. The internal "Requirements for the digital aspect & current internal implementation" report and the AES-ranked idea wishlist (Bronze/Silver/Gold) are the sources of the baseline objectives. According to these documents, the device must support 16-bit dimming, have at least four PWM channels for RGBW, be daisy-chainable with few data lines, and guarantee that even the 25th device in the chain completes reception in less than 25 ms to maintain perceptual simultaneity throughout the installation.
 
-![System-Level Architecture of the AES LED Driver IC](/figures/_fig_MultiSegDSA.svg){#fig-MDSA}
+![System-Level Architecture of the AES LED Driver IC](/figures/_fig_MultiSegDSA.pdf){#fig-MDSA}
 
 The @fig-MDSA shows multiple identical IC nodes (labeled “AES-IC0815”) connected in series. Each node represents one segment controller/driver IC that interfaces to local LEDs and participates in the daisy-chain. A series connection of several identical LED driver IC nodes makes up the system. After receiving a serial control data stream and a high-voltage LED supply, each node extracts its local brightness values, creates PWM signals for RGBW channels, powers local LEDs, and transmits the remaining data downstream.
 Communication follows a framed serial protocol (UART baseline in the current implementation). Each segment forwards the remaining frame after extracting two bytes from each colour channel (16-bit RGBW → 8 bytes total) and storing the contents locally. To preserve perceptual simultaneity, the data rate must guarantee that even the 25th device in the chain completes reception in less than 25 ms.
@@ -29,7 +29,7 @@ To prevent flickering, each IC has a minimum frequency of ≥ 370 Hz (ideally > 
 
 The current prototype implementation of the AES daisy-chainable LED driver concept for a single light segment is shown in @fig-LEDstrip. The segment is one modular unit in a chain of segments, each of which can apply local LED settings, receive control data, and then send the remaining data to the next segment.
 
-![LED Segment Architecture](/figures/_fig_LEDstrip.svg){#fig-LEDstrip}
+![LED Segment Architecture](/figures/_fig_LEDstrip.pdf){#fig-LEDstrip}
 
 A microcontroller (STM32C011) serving as the digital control core is positioned in the middle of the section. The microcontroller in the current internal implementation carries out the identical logical tasks that the digital subsystem of the future LED driver IC is anticipated to accomplish in hardware. Using PWM outputs, the microcontroller powers four "LED Driver" blocks. These driver blocks serve as the analog/power interface, which uses switching or current-regulated sinks to translate the digital PWM signal into controlled LED current.
 

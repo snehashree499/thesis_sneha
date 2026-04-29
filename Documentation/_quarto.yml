@@ -1,6 +1,8 @@
 project:
   type: manuscript
 
+bibliography: _bibliography/references.bib
+
 manuscript:
   article: index.qmd
 
@@ -21,6 +23,7 @@ format:
 
     # keep-tex: true
     pdf-engine: xelatex
+    svg: inkscape
     
     papersize: a4 
     geometry:
