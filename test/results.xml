@@ -1,0 +1,7 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1747254176" />
+    <testcase name="my_first_test" classname="test_my_design" file="/foss/designs/AES-Campus/thesis/sneha/test_my_design.py" lineno="10" time="0.0006699562072753906" sim_time_ns="20.001" ratio_time="29854.190143772244" />
+    <testcase name="my_second_test" classname="test_my_design" file="/foss/designs/AES-Campus/thesis/sneha/test_my_design.py" lineno="40" time="0.00026702880859375" sim_time_ns="6.000999999999998" ratio_time="22473.23062857142" />
+  </testsuite>
+</testsuites>

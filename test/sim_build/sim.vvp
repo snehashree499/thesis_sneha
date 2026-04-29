@@ -1,0 +1,27 @@
+#! /foss/tools/iverilog/bin/vvp
+:ivl_version "13.0 (devel)" "(s20250103-26-gb0c57ab1-dirty)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision - 12;
+:vpi_module "/foss/tools/iverilog/lib/ivl/system.vpi";
+:vpi_module "/foss/tools/iverilog/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/foss/tools/iverilog/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/foss/tools/iverilog/lib/ivl/v2005_math.vpi";
+:vpi_module "/foss/tools/iverilog/lib/ivl/va_math.vpi";
+:vpi_module "/foss/tools/iverilog/lib/ivl/v2009.vpi";
+S_0xaaaafed4a4e0 .scope package, "$unit" "$unit" 2 1;
+ .timescale -9 -12;
+S_0xaaaafed4a670 .scope module, "my_design" "my_design" 3 4;
+ .timescale -9 -9;
+    .port_info 0 /INPUT 1 "clk";
+o0xffff98e8f018 .functor BUFZ 1, c4<z>; HiZ drive
+v0xaaaafed4a800_0 .net "clk", 0 0, o0xffff98e8f018;  0 drivers
+L_0xffff98997018 .functor BUFT 1, C4<x>, C4<0>, C4<0>, C4<0>;
+v0xaaaafed91150_0 .net "my_signal_1", 0 0, L_0xffff98997018;  1 drivers
+L_0xffff98997060 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0xaaaafed91210_0 .net "my_signal_2", 0 0, L_0xffff98997060;  1 drivers
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "-";
+    "/foss/designs/AES-Campus/thesis/sneha/my_design.sv";

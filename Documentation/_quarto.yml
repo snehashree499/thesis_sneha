@@ -1,0 +1,43 @@
+project:
+  type: manuscript
+
+bibliography: _bibliography/references.bib
+
+manuscript:
+  article: index.qmd
+
+execute:
+  freeze: auto
+
+format:
+  html:
+    theme: flatly
+    fontsize: 1.2em
+    linestretch: 1.7
+
+  pdf:
+    documentclass: scrartcl # scrreprt 
+    # lof: true
+    # lot: true
+    # toc: true
+
+    # keep-tex: true
+    pdf-engine: xelatex
+    svg: inkscape
+    
+    papersize: a4 
+    geometry:
+      - top=30mm
+      - left=20mm
+      - heightrounded
+
+    hyperrefoptions:
+      - linktoc=all
+      
+    colorlinks: true
+    linkcolor: "blue"
+    
+    biblio-style: ieee
+    
+    mainfont: "Calibri"
+    fontsize: 11pt

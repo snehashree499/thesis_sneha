@@ -1,0 +1,66 @@
+project:
+  type: anu-thesis
+  output-dir: docs
+
+book:
+   title: "{{< var title >}}"
+   subtitle: "{{< var subtitle >}}"
+   author: "{{< var author >}}"
+   date: today
+
+   repo-url: https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha
+   repo-branch: main
+   repo-actions: [edit, issue]
+   downloads: [pdf, epub]
+
+   #cover-image: images/example-html.png
+   #cover-image-alt: "This is a cover image."
+   chapters:
+     - index.qmd
+     - 01-dedication.qmd
+     - 02-declaration.qmd
+     - 03-abstract.qmd
+     - 04-acknowledgements.qmd
+     - chapter1.qmd
+     - chapter2.qmd
+     - references.qmd
+   appendices:
+     - tools.qmd
+   page-footer: "Copyright © 2026, Sneha Shree Katepalli"
+
+   output-file: "thesis_ssk"
+
+# Bibliography
+bibliography: _bibliography/references.bib
+csl: _bibliography/ieee.csl
+
+comments:
+  hypothesis: true
+
+degree: "{{< var degree >}}"
+school: "{{< var school >}}"
+date-start: "{{< var date-start >}}"
+date-end: "{{< var date-end >}}"
+titlepage-supervisor: true
+supervisor:
+  - Prof. Dr.-Ing. Mirco Meiners
+  - Prof. Dr.-Ing. Stefan Wolter
+
+
+
+format:
+  anu-thesis-html: default
+    
+  anu-thesis-pdf:
+    keep-tex: false
+    classoption: twoside
+    highlight-style: pygments
+    
+    # fontsize: 11pt
+    # pdfengine: xelatex
+
+    # Fonts
+    mainfont: "Latin Modern Roman"
+    sansfont: "Arial"
+    monofont: "Courier New"
+    mathfont: "TeX Gyre Termes Math"
