@@ -1,0 +1,10 @@
+# GateMate Evaluation Board Pin Constraints File
+
+# 10 MHz System Clock
+Pin_in  "clk"  Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
+
+# LED0
+Pin_out "led"  Loc = "IO_EB_B1";
+
+# Note: If your LED is active low, you may need to invert the signal in the Verilog code,
+# or simply connect to the correct pin for your specific board revision.

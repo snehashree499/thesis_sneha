@@ -1,0 +1,12 @@
+# 10 MHz System Clock
+Pin_in  "clk"  Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
+
+# 8 LEDs on the GateMate Evaluation Board
+Pin_out "leds[0]" Loc = "IO_EB_B1";
+Pin_out "leds[1]" Loc = "IO_EB_B2";
+Pin_out "leds[2]" Loc = "IO_EB_B3";
+Pin_out "leds[3]" Loc = "IO_EB_B4";
+Pin_out "leds[4]" Loc = "IO_EB_B5";
+Pin_out "leds[5]" Loc = "IO_EB_B6";
+Pin_out "leds[6]" Loc = "IO_EB_B7";
+Pin_out "leds[7]" Loc = "IO_EB_B8";

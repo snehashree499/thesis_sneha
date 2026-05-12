@@ -1,0 +1,8 @@
+# 10 MHz System Clock
+Pin_in  "clk"  Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
+
+# Push Button SW3
+Pin_in  "btn"  Loc = "IO_EB_B0";
+
+# LED D1
+Pin_out "led"  Loc = "IO_EB_B1";
