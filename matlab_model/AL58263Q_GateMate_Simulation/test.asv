@@ -1,3 +1,0 @@
-bin_string = '';
-bits = bin_string - 0;
-disp(bits)
