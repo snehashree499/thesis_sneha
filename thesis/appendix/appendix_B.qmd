@@ -1,0 +1,17 @@
+# USB-Stick and Script Referencing
+
+All directory structures and file paths presented in this appendix are intentionally simplified. They are provided to clarify the organization of the project and to indicate where specific scripts, netlists, verification outputs, and layout files can be found within the design environment.
+
+```t
+thesis
+├── .gitattributes
+├── .gitignore
+├── _book/
+├── _quarto/
+├── _quarto.yml
+├── _bibliography
+├── index.qmd            # Main project page
+├── README.md
+├── references.qmd
+├── appendix             # Appendix
+```

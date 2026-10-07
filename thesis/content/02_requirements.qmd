@@ -19,15 +19,3 @@ driver IC, particularly in ensuring reliable performance across varying input co
 
 ## Block Diagram
 
-![Block Diagram[@wicht2020]](../figures/_fig_BlockDiagram.png){#fig-block-diagram}
-
-\clearpage
-
-| Block                                          | Function                                              |
-|------------------------------------------------|-------------------------------------------------------|
-| Power Stage Interface                          | Inductor-Capacitor Buck output stage                  |
-| PWM Generator                                  | Ramp + Comparator                                     |
-| Error Amplifier                                | Feedback loop, V_ref vs V_out                         |
-| Current Control                                | Per channel analog regulation (DAC + current sink)    |
-| Thermal + Voltage protections                  | Shutdown to over-temperature, over and under voltages |
-| Biasing, reference circuits, reference sources | Bandgap or bias current                               |

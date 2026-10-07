@@ -18,7 +18,7 @@ book:
           url: "https://www.hs-bremen.de"
           department: "School of Electrical Engineering and Computer Sciences"
 
-  date: "26 November 2025"
+  date: "15 November 2026"
   date-format: "MMMM YYYY"
   # license: "Apache-2.0 license"
 
@@ -35,7 +35,7 @@ book:
   repo-url: https://github.com/snehashree499/thesis_sneha
   repo-branch: main
   repo-actions: [edit,issue]
-  downloads: [pdf,epub]
+  downloads: [pdf]
 
   chapters:
     - frontmatter/02-declaration.qmd
@@ -47,18 +47,14 @@ book:
     - references.qmd
     
   appendices:
-    - content/_appendix_A.qmd
-    - content/_appendix_B.qmd
-    - content/_appendix_C.qmd
+    - appendix/appendix_A.qmd
+    - appendix/appendix_B.qmd
 
   output-file: "thesis_ssk"
 
 # Bibliography
 bibliography: _bibliography/references.bib
 csl: _bibliography/ieee.csl
-
-number-sections: true
-highlight-style: pygments
 
 format:
   html:
@@ -71,20 +67,20 @@ format:
     # fontcolor: "black"
     highlight-style: github
 
-  epub:
-    theme: flatly
-    fontsize: 1.2em
-    linestretch: 1.7
-    # mainfont: Helvetica Neue, Helvetica, Arial, sans
-    # monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
-    # backgroundcolor: "white"
-    # fontcolor: "black"
-    highlight-style: github
+  # epub:
+  #   theme: flatly
+  #   fontsize: 1.2em
+  #   linestretch: 1.7
+  #   # mainfont: Helvetica Neue, Helvetica, Arial, sans
+  #   # monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
+  #   # backgroundcolor: "white"
+  #   # fontcolor: "black"
+  #   highlight-style: github
 
   pdf:
     documentclass: scrbook
     classoption: [twoside]
-    keep-tex: true
+    keep-tex: false
 
     papersize: a4
     fig-pos: "H"
@@ -97,19 +93,20 @@ format:
 
     number-sections: true
     number-depth: 2
-        
+    highlight-style: pygments
+
     geometry:
-      # - inner=3cm
-      # - outer=4cm
+      - inner=3cm
+      - outer=4cm
       - top=2.5cm
       - bottom=2.5cm
       - left=3cm
       - right=1.5cm
-      # - headsep=22pt
-      # - headheight=11pt
-      # - footskip=33pt
+      - headsep=22pt
+      - headheight=11pt
+      - footskip=33pt
       - ignorehead
-      # - ignorefoot
+      - ignorefoot
       - heightrounded
 
     hyperrefoptions: 
