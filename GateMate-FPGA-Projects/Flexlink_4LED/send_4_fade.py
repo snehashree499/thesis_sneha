@@ -1,15 +1,6 @@
 # ============================================================================
 #  send_4_fade.py  -  smooth fade on all four channels, until Ctrl + C
 # ============================================================================
-#
-#  Red + blue fade in while green + white fade out, then the other way round.
-#  A new frame is sent for every step, so this also shows that the receiver
-#  handles a continuous stream of frames.
-#
-#  Run:   python send_4_fade.py        stop with Ctrl + C (all LEDs go off)
-#
-#  Needs pyserial once:  pip install pyserial
-# ============================================================================
 
 import time
 import serial
@@ -21,7 +12,6 @@ DELAY = 0.01        # pause after each step in seconds (bigger = slower fade)
 
 
 # ----------------------------------------------------------------------------
-#  How the 9th bit is made (same as in send_4_value.py)
 #      MARK  parity -> 9th bit = 1  (SOP, EOP)
 #      SPACE parity -> 9th bit = 0  (data bytes)
 # ----------------------------------------------------------------------------

@@ -1,17 +1,7 @@
 # ============================================================================
 #  send_4_value.py  -  send ONE Flexlink frame with four brightness values
 # ============================================================================
-#
-#  Sets red, green, blue and white to fixed levels and exits.
-#  The LEDs keep that brightness until the next frame arrives.
-#
-#  Run:
-#      python send_4_value.py                       uses the values below
-#      python send_4_value.py 65535 0 0 0           full red only
-#      python send_4_value.py 30000 0 10000 65535   any four values 0..65535
-#
-#  Needs pyserial once:  pip install pyserial
-# ============================================================================
+
 
 import sys
 import time
@@ -26,18 +16,6 @@ GREEN = 26985
 BLUE  = 46260
 WHITE = 0
 
-
-# ----------------------------------------------------------------------------
-#  How the 9th bit is made
-#
-#  A PC serial port only has 8 data bits, but Flexlink needs 9.
-#  The parity bit sits exactly where the 9th bit would be, so we use it:
-#      MARK  parity -> 9th bit = 1  (control symbols: SOP, EOP)
-#      SPACE parity -> 9th bit = 0  (normal data bytes)
-#
-#  The parity setting must not change while bytes are still going out,
-#  so we wait for the previous bytes to leave before switching.
-# ----------------------------------------------------------------------------
 def send_group(ser, byte_list, ninth_bit):
     ser.flush()          # wait until the PC has handed out all bytes
     time.sleep(0.002)    # small extra time for the adapter's own buffer
