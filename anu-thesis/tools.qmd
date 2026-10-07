@@ -1,3 +1,0 @@
-# Tools {#sec-tools}
-
-This thesis was written using [Quarto](https://quarto.org/)
