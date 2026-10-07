@@ -1,0 +1,26 @@
+# ============================================================================
+#  4_LED.ccf  -  pin assignment for 4_LED_top.v on the GateMate eval board
+# ============================================================================
+
+# 10 MHz on-board oscillator (multiplied to 50 MHz by the PLL)
+Pin_in  "clk" Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
+
+# Serial input from the adapter's TXD, Pmod J17A pin 1.
+# PULLUP: an idle UART line must rest HIGH, even if the cable is unplugged.
+Pin_in  "rx"  Loc = "IO_NB_A0" | SCHMITT_TRIGGER=true | PULLUP=true;
+
+# On-board LEDs D1..D8 (active low). D1 = red, D2 = green, D3 = blue, D4 = white.
+Pin_out "leds_n[0]" Loc = "IO_EB_B1";
+Pin_out "leds_n[1]" Loc = "IO_EB_B2";
+Pin_out "leds_n[2]" Loc = "IO_EB_B3";
+Pin_out "leds_n[3]" Loc = "IO_EB_B4";
+Pin_out "leds_n[4]" Loc = "IO_EB_B5";
+Pin_out "leds_n[5]" Loc = "IO_EB_B6";
+Pin_out "leds_n[6]" Loc = "IO_EB_B7";
+Pin_out "leds_n[7]" Loc = "IO_EB_B8";
+
+# PWM outputs to the external transistor stage (one BC547C per colour)
+Pin_out "red"   Loc = "IO_NB_B0";
+Pin_out "green" Loc = "IO_NB_B1";
+Pin_out "blue"  Loc = "IO_NB_B2";
+Pin_out "white" Loc = "IO_NB_B3";
