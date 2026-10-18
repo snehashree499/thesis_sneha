@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# flexlink_node.ccf  -  SAME pin file for every GateMate
+#
+#   PmodA pin 1  = up_rx  (IN)  from TTL Tx (GM1) / from previous GM pin 3
+#   PmodA pin 2  = dn_tx  (OUT) to TTL Rx   (GM1) / to previous GM pin 4
+#   PmodA pin 3  = up_tx  (OUT) to next GM pin 1
+#   PmodA pin 4  = dn_rx  (IN)  from next GM pin 2
+#   PmodA pin 7..10 = SEG1..SEG4 (red, green, blue, white)
+#
+#   up_rx has PULLUP   -> open line rests HIGH (idle)
+#   dn_rx has PULLDOWN -> nothing connected = LOW = "I am the last GM"
+# ---------------------------------------------------------------------------
+
+# 10 MHz on-board oscillator -> PLL
+Pin_in  "clk"   Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
+
+# Flexlink lines
+Pin_in  "up_rx" Loc = "IO_NB_A0" | SCHMITT_TRIGGER=true | PULLUP=true;
+Pin_out "dn_tx" Loc = "IO_NB_A1";
+Pin_out "up_tx" Loc = "IO_NB_A2";
+Pin_in  "dn_rx" Loc = "IO_NB_A3" | SCHMITT_TRIGGER=true | PULLUP=true;
+
+# On-board LEDs D1..D8 (active low)
+Pin_out "leds_n[0]" Loc = "IO_EB_B1";
+Pin_out "leds_n[1]" Loc = "IO_EB_B2";
+Pin_out "leds_n[2]" Loc = "IO_EB_B3";
+Pin_out "leds_n[3]" Loc = "IO_EB_B4";
+Pin_out "leds_n[4]" Loc = "IO_EB_B5";
+Pin_out "leds_n[5]" Loc = "IO_EB_B6";
+Pin_out "leds_n[6]" Loc = "IO_EB_B7";
+Pin_out "leds_n[7]" Loc = "IO_EB_B8";
+
+# Segment outputs to the transistor driver stages
+Pin_out "seg1"  Loc = "IO_NB_B0" | SLEW=FAST | DRIVE=12;
+Pin_out "seg2"  Loc = "IO_NB_B1" | SLEW=FAST | DRIVE=12;
+Pin_out "seg3"  Loc = "IO_NB_B2" | SLEW=FAST | DRIVE=12;
+Pin_out "seg4"  Loc = "IO_NB_B3" | SLEW=FAST | DRIVE=12;
+
+Pin_out "dn_tx" Loc = "IO_NB_A1" | SLEW=FAST | DRIVE=12;  
+Pin_out "up_tx" Loc = "IO_NB_A2" | SLEW=FAST | DRIVE=12;  
