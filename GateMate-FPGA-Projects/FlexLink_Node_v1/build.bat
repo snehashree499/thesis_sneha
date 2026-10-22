@@ -23,7 +23,7 @@ echo =================================================
 yosys -q -p "read_verilog flexlink_node.v; synth_gatemate -top flexlink_node -nomx8 -luttree; write_json flexlink_node.json"
 if errorlevel 1 goto :fail
 
-nextpnr-himbaechel --device CCGM1A1 --json flexlink_node.json --vopt ccf=flexlink_node.ccf --vopt out=flexlink_node.cfg
+nextpnr-himbaechel --device CCGM1A1 --json flexlink_node.json --vopt ccf=flexlink_node.ccf --vopt out=flexlink_node.cfg --report utilisation.json
 if errorlevel 1 goto :fail
 
 gmpack flexlink_node.cfg flexlink_node.bit

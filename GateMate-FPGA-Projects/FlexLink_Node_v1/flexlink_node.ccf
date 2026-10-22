@@ -16,8 +16,8 @@ Pin_in  "clk"   Loc = "IO_SB_A8" | SCHMITT_TRIGGER=true;
 
 # Flexlink lines
 Pin_in  "up_rx" Loc = "IO_NB_A0" | SCHMITT_TRIGGER=true | PULLUP=true;
-Pin_out "dn_tx" Loc = "IO_NB_A1";
-Pin_out "up_tx" Loc = "IO_NB_A2";
+Pin_out "dn_tx" Loc = "IO_NB_A1" | SLEW=FAST | DRIVE=12;
+Pin_out "up_tx" Loc = "IO_NB_A2" | SLEW=FAST | DRIVE=12;
 Pin_in  "dn_rx" Loc = "IO_NB_A3" | SCHMITT_TRIGGER=true | PULLUP=true;
 
 # On-board LEDs D1..D8 (active low)
@@ -36,5 +36,4 @@ Pin_out "seg2"  Loc = "IO_NB_B1" | SLEW=FAST | DRIVE=12;
 Pin_out "seg3"  Loc = "IO_NB_B2" | SLEW=FAST | DRIVE=12;
 Pin_out "seg4"  Loc = "IO_NB_B3" | SLEW=FAST | DRIVE=12;
 
-Pin_out "dn_tx" Loc = "IO_NB_A1" | SLEW=FAST | DRIVE=12;  
-Pin_out "up_tx" Loc = "IO_NB_A2" | SLEW=FAST | DRIVE=12;  
+Pin_out "vref_2v5" Loc = "IO_NB_A4" | DRIVE=12;

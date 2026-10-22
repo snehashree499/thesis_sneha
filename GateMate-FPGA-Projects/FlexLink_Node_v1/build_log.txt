@@ -1,0 +1,22 @@
+=================================================
+ flexlink_node - same bitstream for GM1 and GM2
+ GM1 = E1-32A0090     GM2 = E1-32A0179
+=================================================
+
+Programming GM1 (E1-32A0090) ...
+Jtag frequency : requested 6.00MHz    -> real 6.00MHz   
+
+Load SRAM via JTAG: [==================================================] 100.00%
+
+Done
+Wait for CFG_DONE DONE
+
+Programming GM2 (E1-32A0179) ...
+Jtag frequency : requested 6.00MHz    -> real 6.00MHz   
+
+Load SRAM via JTAG: [==================================================] 100.00%
+
+Done
+Wait for CFG_DONE DONE
+
+Both done. Now:  python flexlink_pc.py

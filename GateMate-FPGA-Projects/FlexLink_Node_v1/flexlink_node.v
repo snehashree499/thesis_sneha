@@ -25,6 +25,7 @@ module flexlink_node #(
     parameter [7:0] MY_TEMP      = 8'd40    // temperature, fixed for now (1 = 1 deg C)
 )(
     input  wire       clk,            // 10 MHz on-board oscillator
+    // input wire pot,
     input  wire       up_rx,          // pin 1: from TTL Tx (GM1) / from previous GM pin 3
     output wire       dn_tx,          // pin 2: to TTL Rx (GM1) / to previous GM pin 4
     output wire       up_tx,          // pin 3: to next GM pin 1
@@ -33,7 +34,8 @@ module flexlink_node #(
     output wire       seg1,           // pin 7  : red
     output wire       seg2,           // pin 8  : green
     output wire       seg3,           // pin 9  : blue
-    output wire       seg4            // pin 10 : white
+    output wire       seg4,           // pin 10 : white
+    output wire       vref_2v5
 );
 
     // Flexlink commands
@@ -101,38 +103,53 @@ module flexlink_node #(
     reg        fwd_valid = 1'b0;    // pulse: put fwd_data in the queue
     reg        led_done  = 1'b0;    // pulse: good LED frame -> send LED answer
     reg        cnt_done  = 1'b0;    // pulse: count frame finished -> answer if I am last
+    reg        cnt_ovf   = 1'b0;    // count value was FF -> overflow, stop counting here
+    reg        cnt_extra  = 1'b0;   // more than 1 data byte in the count packet -> wrong
+    reg  [7:0] temp_id    = 8'hFF;   // id from this count, taken only if the packet is ok
+    // [OVF] hold back the count SOP till the count value is checked -> nothing goes to the next GM on overflow
+    reg        cnt_pend   = 1'b0;   // [OVF] 1 = send the held-back count value in the next clock
+    reg  [8:0] cnt_next   = 9'd0;   // [OVF] the count value (a+1) waiting to be sent
 
     always @(posedge clk_sys) begin
         fwd_valid <= 1'b0;
         led_done  <= 1'b0;
         cnt_done  <= 1'b0;
 
+
         if (up_valid) begin
             if (up_data == FL_EOP) begin
-                // EOP: pass it on, then act on the frame
-                if (in_frame) begin
-                    fwd_data  <= FL_EOP;
-                    fwd_valid <= 1'b1;
-                end
-                if (in_frame && is_led && keep_count == MY_BYTES) begin   // got all my 8 bytes
+                if (in_frame && is_led && keep_count == MY_BYTES) begin   // got all my 8 bytes // Check: GM got all 8 of its bytes before updating
                     level_red   <= frame_data[63:48];
                     level_green <= frame_data[47:32];
                     level_blue  <= frame_data[31:16];
                     level_white <= frame_data[15:0];
-                    led_done    <= 1'b1;
+                    led_done    <= 1'b1;    //only answer after a good frame
                 end
-                if (in_frame && is_cnt && cnt_got)
+                if (in_frame && is_cnt && cnt_got && !cnt_extra) begin //incase to abort remove cnt_extra check
+                    my_id    <= temp_id;   // packet was ok -> take the new id now
+                        //fwd_data  <= CNT_UP_SOP;                     // [OVF] value is ok -> now send the held-back SOP
                     cnt_done <= 1'b1;
+                end
+                // EOP: pass it on, then act on the frame
+                // if (in_frame) begin                                       // [OVF] old line
+                if (in_frame) begin   // [OVF] no EOP if the count SOP was never sent
+                    fwd_data  <= FL_EOP;
+                    fwd_valid <= 1'b1;
+                end
                 in_frame <= 1'b0;
             end
             else if (up_data[8]) begin
                 // any SOP: pass it on, start a new frame
                 fwd_data   <= up_data;
-                fwd_valid  <= 1'b1;
+                fwd_valid  <= 1'b1;                    // [OVF] old line
+               // fwd_valid  <= (up_data != CNT_UP_SOP);   // [OVF] count SOP is held back till the value is checked
                 in_frame   <= 1'b1;
                 is_led     <= (up_data == LED_UP_SOP);
                 is_cnt     <= (up_data == CNT_UP_SOP);
-                cnt_got    <= 1'b0;
+                cnt_got    <= 1'b0;  // cnt_got = 0  → I have NOT received the count value yet in this packet
+                                     // cnt_got = 1  → I already received the count value
+                cnt_ovf    <= 1'b0; // new frame, no overflow yet
+                cnt_extra  <= 1'b0;   // new frame, no extra bytes yet
                 keep_count <= 4'd0;
             end
             else if (in_frame) begin
@@ -141,17 +158,59 @@ module flexlink_node #(
                     frame_data <= {frame_data[55:0], up_data[7:0]};
                     keep_count <= keep_count + 4'd1;
                 end
-                else if (is_cnt && !cnt_got) begin
-                    // count value a: I am segment a+1, next GM gets a+1
-                    my_id     <= up_data[7:0];  // my_id = the number GM received
-                    fwd_data  <= {1'b0, up_data[7:0] + 8'd1};   // next GM gets +1 
-                    fwd_valid <= 1'b1;
-                    cnt_got   <= 1'b1;
+                else if (is_cnt && !cnt_got) begin // (Is this a count packet && I have not received a count value yet)
+                                                   // count value a: I am segment a, next GM gets a+1
+                    cnt_got   <= 1'b1;  // I have received the count value, so I will not process any more count values in this frame
+                    temp_id     <= up_data[7:0];  // wait till EOP, take it only if packet is ok
+                        
+                    if (up_data[7:0] == 8'hFF) begin // overflow, stop counting here
+                        cnt_ovf   <= 1'b1;
+                    end
+                    else begin
+                        fwd_data  <= {1'b0, up_data[7:0] + 8'd1};   // next GM gets +1     // [OVF] old line
+                        fwd_valid <= 1'b1;   
+                    end 
                 end
+                    /*// This logic is to abort the packet if a 2nd data byte is received in a count packet.
+                    else begin
+                        if (is_cnt) begin
+                        // 2nd data byte in a count packet -> ABORT this packet
+                            fwd_data  <= up_data;   // pass this byte on, so the next GM aborts too
+                            fwd_valid <= 1'b1;
+                            in_frame  <= 1'b0;      // stop: ignore the rest of this packet (also the EOP)
+                        end
+                    else begin
+                        // not mine, pass it on
+                        fwd_data  <= up_data;
+                        fwd_valid <= 1'b1;
+                    end
+                end */
+                    /* This below logic is to keep FF as the my_id for the GM that receives FF, but it is not needed as we are not counting beyond 255 segments.
+                    Eg 1: cnt_got = 1
+                        my_id   = 05
+                        05 != FF ? yes → fwd_data = {0, 05 + 1} = 0x006 → sent to the next GM
+                        EOP → answers 1B0 05 176
+                    Eg 2: cnt_got = 1
+                        my_id   = FF
+                        FF != FF ? no → nothing passed on (FF + 1 would wrap to 00)
+                        EOP → answers 1B0 FF 176
+                        next GM gets only 160 … 176 (SOP and EOP) → no data → stays silent  
+
+                    else if (is_cnt && !cnt_got) begin
+                    cnt_got <= 1'b1;
+                        my_id   <= up_data[7:0];
+                            if (up_data[7:0] != 8'hFF) begin
+                                fwd_data  <= {1'b0, up_data[7:0] + 8'd1};   // next GM gets +1 
+                                fwd_valid <= 1'b1;
+                            end*/
                 else begin
                     // not mine, pass it on
+                    if (is_cnt) begin
+                        cnt_extra <= 1'b1;
+                    end
                     fwd_data  <= up_data;
-                    fwd_valid <= 1'b1;
+                    fwd_valid <= 1'b1;   // [OVF] after an overflow pass nothing on
+                    
                 end
             end
         end
@@ -186,17 +245,17 @@ module flexlink_node #(
 
     reg        dn_s1 = 1'b0, dn_s2 = 1'b0;      // 2 flip-flops, make dn_rx safe
     reg [15:0] low_cnt = 16'd0;
-    //reg        is_last = 1'b0;
+    reg        is_last = 1'b0;
 
     always @(posedge clk_sys) begin
         dn_s1 <= dn_rx;
         dn_s2 <= dn_s1;
         if (dn_s2) begin
             low_cnt <= 16'd0;
-            //is_last <= 1'b0;
+            is_last <= 1'b0;
         end
         else if (low_cnt == LAST_TIME)
-            //is_last <= 1'b1;
+            is_last <= 1'b1;
         else
             low_cnt <= low_cnt + 16'd1;
     end
@@ -299,10 +358,11 @@ module flexlink_node #(
     // ------------------------------------------------------------------
     // 8) Outputs
     // ------------------------------------------------------------------
-    assign seg1 = pwm_red;
-    assign seg2 = pwm_green;
-    assign seg3 = pwm_blue;
-    assign seg4 = pwm_white;
+    assign seg1 = pwm_red; // For Pot: pwm_red * pot_value
+    assign seg2 = pwm_green; // For Pot: pwm_green * pot_value
+    assign seg3 = pwm_blue; // For Pot: pwm_blue * pot_value
+    assign seg4 = pwm_white; // For Pot: pwm_white * pot_value
+    assign vref_2v5 = 1'b1;  // 2.5V reference for the LEDs
 
     // D1..D4 = PWM,  D5..D8 = my_id (GM1 -> D5 on, GM2 -> D6 on)
     assign leds_n = { ~my_id[3:0], ~pwm_white, ~pwm_blue, ~pwm_green, ~pwm_red };
