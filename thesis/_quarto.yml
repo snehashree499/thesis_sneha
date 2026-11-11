@@ -3,7 +3,7 @@ project:
   output-dir: _book
 
 book:
-  title: "Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lightning with Open-Source Tools"
+  title: "Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lighting with Open-Source Tools"
   author:
     - name: "Sneha Shree Katepalli"
       email: "skatepalli@hs-bremen.de"
@@ -26,7 +26,7 @@ book:
 
   page-footer:
     left: |
-      Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lightning with Open-Source Tools
+      Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lighting with Open-Source Tools
     right: |
       This book was built with <a href="https://quarto.org/">Quarto</a>.
   # cover-image: images/hsb-logo.png
@@ -43,7 +43,12 @@ book:
     - frontmatter/04-acknowledgements.qmd
     - index.qmd
     - content/01_introduction.qmd
-    - content/02_requirements.qmd
+    - content/02_fundamentals.qmd
+    - content/03_requirements.qmd
+    - content/05_rtl_design.qmd
+    - content/06_hardware.qmd      
+    - content/07_evaluation.qmd
+    - content/08_conclusion.qmd
     - references.qmd
     
   appendices:
@@ -59,6 +64,7 @@ csl: _bibliography/ieee.csl
 format:
   html:
     theme: flatly
+    default-image-extension: svg    # HTML uses the .svg images
     fontsize: 1.2em
     linestretch: 1.7
     # mainfont: Helvetica Neue, Helvetica, Arial, sans
@@ -79,6 +85,7 @@ format:
 
   pdf:
     documentclass: scrbook
+    default-image-extension: pdf    # PDF uses the .pdf images
     classoption: [twoside]
     keep-tex: false
 

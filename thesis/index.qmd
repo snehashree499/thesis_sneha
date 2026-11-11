@@ -1,91 +1,49 @@
 # List of Abbreviations {.unnumbered .unlisted}
 
-**AC** — Alternating Current  
-**AVDD** — Analog Supply Voltage  
-**AVSS** — Analog Ground
-
-**CACE** — Computer-Aided Circuit Evaluation  
-**CC** — Coupling Capacitor  
-**C** — Capacitance  
-**$C_{gd}$** — Gate–Drain Capacitance  
-**$C_{gs}$** — Gate–Source Capacitance  
-**CMOS** — Complementary Metal–Oxide–Semiconductor  
-**CMRR** — Common-Mode Rejection Ratio   
-
-**DC** — Direct Current  
-**DFM** — Design for Manufacturability  
-**DRC** — Design Rule Check  
-
-**EDA** — Electronic Design Automation  
-**EDA-OS** — Open-Source Electronic Design Automation  
-**ESD** — Electrostatic Discharge  
-
-**FF** — Fast–Fast Process Corner  
-**FS** — Fast–Slow Process Corner  
-
-**GDS / GDSII** — Graphic Data System (Final Layout Format)  
-**$g_m$** — Transconductance  
-
-**Hz** — Hertz  
-
-**I/O** — Input/Output  
-**IC** — Integrated Circuit  
-**$I_d$** — Drain Current  
-**IHP** — Innovations for High Performance Microelectronics  
-
-**LED** — Light-Emitting Diode  
-**LDO** — Low-Dropout Regulator  
-**LHS** — Left-Hand Side  
-**L** — Channel Length  
-**$L_{min}$** — Minimum Channel Length  
-
-**MC** — Monte-Carlo Simulation  
-**MIM** — Metal–Insulator–Metal Capacitor   
-**MOSFET** — Metal–Oxide–Semiconductor Field-Effect Transistor  
-**MPW** — Multi-Project Wafer  
-**µm** — Micrometre (Micron)  
-
-**$n_g$** — Number of gates  
-**$N_f$** — Number of fingers  
-**NMOS** — n-channel MOSFET  
-**nm** — Nanometre  
-
-**OTA** — Operational Transconductance Amplifier  
-
-**PAD** — Bond Pad  
-**PCB** — Printed Circuit Board  
-**Pcell** — Parameterized Cell  
-**PDK** — Process Design Kit  
-**PEX** — Parasitic Extraction  
-**PMIC** — Power Management Integrated Circuit  
-**PMOS** — p-channel MOSFET  
-**PPV** — Post-Processing Verification  
-**PSRR** — Power Supply Rejection Ratio  
-**PVT** — Process, Voltage, Temperature  
-
-**Qt** — Qt Framework (used by KLayout GUI)  
-
-**R** — Resistance  
-**$R_{sub}$** — Substrate Resistance  
-**$R_{well}$** — Well Resistance    
- 
-**SG13G2** — IHP 130-nm SiGe BiCMOS Technology  
-**SME** — Small and Medium-Sized Enterprise  
-**SS** — Slow–Slow Process Corner  
-**SF** — Slow–Fast Process Corner  
-**STI** — Shallow Trench Isolation  
-
-**TT** — Typical–Typical Process Corner  
-
-**UGB** — Unity-Gain Bandwidth  
-
-**V** — Volt  
-**$V_{DS}$** — Drain–Source Voltage  
-**$V_{GS}$** — Gate–Source Voltage  
-**$V_{IN}^{+}$** — Non-inverting Input Voltage  
-**$V_{IN}^{−}$** — Inverting Input Voltage  
-**$V_{OUT}$** — Output Voltage  
-**$V_{REF}$** — Reference Voltage  
-
-**W** — Channel Width  
-**W/L** — Width-to-Length Ratio  
+| **Abbreviation** | **Meaning** |
+|:-----------------|:------------|
+| AES    | AES Aircraft Elektro/Elektronik System GmbH |
+| ASIC   | Application-Specific Integrated Circuit |
+| BJT    | Bipolar Junction Transistor |
+| CCT    | Correlated Colour Temperature |
+| CPE    | Cologne Programmable Element (logic cell of the GateMate FPGA) |
+| CRC    | Cyclic Redundancy Check |
+| DC     | Direct Current |
+| EASA   | European Union Aviation Safety Agency |
+| EOP    | End of Packet |
+| ESD    | Electrostatic Discharge |
+| EUROCAE | European Organisation for Civil Aviation Equipment |
+| FIFO   | First In, First Out (buffer) |
+| FPGA   | Field-Programmable Gate Array |
+| FSM    | Finite State Machine |
+| GM1, GM2 | GateMate evaluation board 1 and 2 (first and second node of the chain) |
+| GPIO   | General-Purpose Input/Output |
+| HDL    | Hardware Description Language |
+| I/O    | Input/Output |
+| IC     | Integrated Circuit |
+| ID     | Identification number of a node |
+| IEEE   | Institute of Electrical and Electronics Engineers |
+| JSON   | JavaScript Object Notation |
+| JTAG   | Joint Test Action Group (test and programming interface) |
+| LED    | Light-Emitting Diode |
+| LSB    | Least Significant Bit |
+| LUT    | Look-Up Table |
+| LVDS   | Low-Voltage Differential Signalling |
+| MOSFET | Metal–Oxide–Semiconductor Field-Effect Transistor |
+| MTBF   | Mean Time Between Failures |
+| PC     | Personal Computer |
+| PIC    | Microcontroller family of Microchip Technology, master of the AES system |
+| PLL    | Phase-Locked Loop |
+| PWM    | Pulse-Width Modulation |
+| RAM    | Random-Access Memory |
+| RGB    | Red, Green, Blue |
+| RGBW   | Red, Green, Blue, White |
+| RTCA   | Radio Technical Commission for Aeronautics |
+| RTL    | Register-Transfer Level |
+| RX, TX | Receive, Transmit |
+| SOP    | Start of Packet |
+| SRAM   | Static Random-Access Memory |
+| TTL    | Transistor–Transistor Logic (logic-level serial signal) |
+| UART   | Universal Asynchronous Receiver-Transmitter |
+| USART  | Universal Synchronous/Asynchronous Receiver-Transmitter |
+| USB    | Universal Serial Bus |

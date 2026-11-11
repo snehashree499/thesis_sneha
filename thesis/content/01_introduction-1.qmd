@@ -1,0 +1,163 @@
+# Introduction {#sec-introduction}
+
+<!-- Page budget: about 5 pages. Text in [square brackets] = fill in or check. -->
+<!-- TODO cite: add references where marked with "TODO cite" before submission. -->
+
+## Motivation {#sec-motivation}
+
+Cabin lighting is an important part of the passenger experience in modern aircraft.
+LED lamps allow an airline to change the colour and the brightness of the light for
+different phases of a flight, such as boarding, cruise and night.
+<!-- TODO cite: source on LED cabin lighting / light scenes -->
+
+A cabin contains many lamp segments. Each segment needs precise and flicker-free
+dimming, and all segments must follow the commands of one central controller.
+At the same time, electronics for aircraft must be reliable, light and cost-effective.
+
+Today, such lamps often use a dedicated multi-channel LED driver IC on each node.
+A field-programmable gate array (FPGA) offers a different path. The same chip can
+receive the communication protocol, generate the dimming signals and be changed later
+by reprogramming. A modular digital design written for an FPGA can also be moved to an
+application-specific integrated circuit (ASIC) in the future.
+
+This thesis explores that path in cooperation with AES Aircraft Elektro/Elektronik
+System GmbH in Bremen. It uses the Cologne Chip GateMate FPGA and a fully open-source
+toolchain (Yosys, nextpnr and openFPGALoader).
+<!-- TODO cite: GateMate datasheet, Yosys, nextpnr, openFPGALoader -->
+
+## Problem Statement {#sec-problem-statement}
+
+The lighting system is a chain of lamp nodes. One master sends the data, and every
+node passes the data on to the next node (daisy chain). In the AES system, the master
+is a PIC microcontroller, and the protocol is the company's Flexlink protocol.
+
+Each node in the chain must do four tasks:
+
+1. take the data that belongs to its own LED segment,
+2. forward the rest of the data to the next node without adding much delay,
+3. convert its brightness values into accurate pulse-width modulation (PWM) signals
+   for the LEDs, and
+4. send answers, such as its address and temperature, back to the master.
+
+@fig-system-architecture shows the system built in this work. A PC takes the role
+of the master and sends Flexlink packets through a USB-to-serial adapter to the first
+GateMate (GM1). GM1 keeps its own data and forwards the rest to the second GateMate
+(GM2). The answers of both nodes travel back to the PC on a separate line.
+
+![System architecture of the prototype: PC master, USB-TTL adapter and two daisy-chained GateMate nodes. Blue = uplink (master to segments), red = downlink (segments to master), green = PWM to the LED segment.](images/ch1_system_architecture){#fig-system-architecture width=100%}
+
+The central question of this thesis is therefore:
+
+> Can a small FPGA such as the Cologne Chip GateMate perform all four tasks of a lamp
+> node, and can a chain of such nodes meet the requirements of an aircraft cabin
+> lighting system?
+
+## Objectives and Research Questions {#sec-objectives}
+
+The main objective of this thesis is to design, prototype and evaluate an FPGA-based
+digital control node for an aircraft cabin LED lamp. The work is guided by three
+research questions:
+
+- **RQ1:** Can one GateMate FPGA receive, decode and forward Flexlink data and at the
+  same time drive the PWM channels of an RGBW LED segment?
+- **RQ2:** Can a daisy chain of such nodes update the 25th segment within the required
+  25 ms?
+- **RQ3:** Which of the system requirements can the FPGA-based approach meet, and which
+  can it not meet?
+
+The requirements come from the AES concept brief and the digital aspect definition.
+@tbl-key-requirements lists the most important ones. The full list follows in
+Chapter 3.
+<!-- TODO: change "Chapter 3" to @sec-requirements once that chapter has its label -->
+
+| Requirement            | Target                                                  |
+|:-----------------------|:--------------------------------------------------------|
+| LED channels           | 4 or more (R, G, B, W per segment)                      |
+| Brightness resolution  | 16 bit per channel                                      |
+| PWM type and frequency | Low-side PWM, above 400 Hz                              |
+| Topology               | Daisy-chainable nodes                                   |
+| Update time            | 25th segment in the chain updated within 25 ms          |
+| Communication          | Flexlink: 1 MBaud, 9-bit words, SOP / data / EOP        |
+
+: Key system requirements from AES {#tbl-key-requirements}
+
+These requirements describe the whole lamp system (FPGA, driver stage and LEDs), not
+only the FPGA. For this reason, the thesis states for each requirement whether it is
+met, partly met or not achievable within the prototype.
+
+From the main objective, the following goals are derived:
+
+- a system-level model of the digital control in MATLAB/Simulink,
+- modular, synthesizable Verilog code that can later be moved to an ASIC,
+- Flexlink receive, forward and answer logic, with the same code on every node,
+- automatic addressing of the nodes (Count Segments) and a downlink for answers,
+- hardware validation on two GateMate evaluation boards.
+
+## Scope, Limitations and Contributions {#sec-scope}
+
+The focus of this thesis is the digital side: the Flexlink communication and the
+forwarding logic in the FPGA. The power electronics come second.
+
+**In scope:**
+
+- PWM generation in the FPGA (four channels with 16 bit per node),
+- the Flexlink uplink and downlink with cut-through forwarding,
+- automatic addressing (Count Segments) and answer messages,
+- a daisy-chain test with two nodes (PC → GM1 → GM2).
+
+**Simplifications:**
+
+- A PC with a USB-to-serial adapter acts as the Flexlink master instead of the PIC.
+- The LED current is set by a series resistor per channel.
+- The temperature value is a fixed placeholder (40 °C), because the sensor is not
+  yet chosen.
+
+**Not in scope:**
+
+- a full chain of 25 segments in hardware (it is evaluated by calculation instead),
+- certification for flight.
+- [Confirm with professor: the "Black Box" — DC-DC converter, voltage level shifter
+  and current-setting potentiometers.]
+
+The main contributions of this thesis are:
+
+1. a working Flexlink node on the GateMate FPGA, with the same design on every node,
+2. cut-through forwarding with a delay of about 10.5 bit times per node,
+3. automatic segment addressing with safety checks for wrong packets,
+4. a complete open-source design flow from Verilog to a programmed FPGA.
+
+## Methodology {#sec-methodology}
+
+The work follows the V-model. On the left side of the V, the design moves from the
+requirements down to the single modules. On the right side, each level is tested
+against the matching level on the left.
+
+<!-- TODO figure: V-model of this thesis (requirements <-> evaluation,
+     architecture <-> hardware test, modules <-> simulation) -->
+
+The work is organised in four overlapping phases:
+
+1. **Requirements and system modelling:** collecting the requirements from AES and
+   building a Simulink model of the data path (shift register, latch, 16-bit parsing
+   and PWM generation).
+2. **RTL design:** writing synthesizable Verilog for the Flexlink receiver,
+   transmitter, forwarding logic, addressing and PWM.
+3. **FPGA implementation and hardware validation:** synthesis with Yosys, place and
+   route with nextpnr, programming with openFPGALoader, and tests on the GateMate
+   boards with an oscilloscope.
+4. **Evaluation and documentation:** checking each requirement and writing up the
+   results.
+
+## Structure of the Thesis {#sec-structure}
+
+<!-- TODO: replace "Chapter X" with @sec-labels when the chapter files exist -->
+
+Chapter 2 explains the background: LED dimming with PWM, FPGAs, the digital design
+flow, serial communication and the Flexlink protocol.
+Chapter 3 lists the requirements, analyses them and presents the system concept.
+Chapter 4 describes the Simulink model of the data path.
+Chapter 5 explains the Verilog design of the Flexlink node, module by module.
+Chapter 6 covers the hardware setup and the tests on the GateMate boards.
+Chapter 7 evaluates the results against the requirements and answers the research
+questions.
+Chapter 8 summarises the work and gives an outlook.

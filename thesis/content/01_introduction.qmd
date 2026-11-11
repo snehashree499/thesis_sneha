@@ -1,60 +1,160 @@
-# Introduction
+# Introduction {#sec-introduction}
 
-In recent years, the **open-source hardware ecosystem** has matured to a point where advanced *analog* and
-*mixed-signal* integrated circuit (IC) design has become increasingly feasible outside proprietary EDA environments.
-Building on this trend, the present work contributes to the **preparatory phase of a larger collaborative initiative**
-that aims to strengthen open-source-based chip design methodologies for small and medium-sized enterprises (SMEs),
-universities, and research institutes.
+LED driver systems are widely used in lighting, displays, automotive applications, and many **embedded systems**. In modern aircraft, LED lighting systems are used for cabin illumination, safety lighting, signage, and many other functions. These systems must be highly reliable, efficient, and suitable for the *demanding conditions of aviation*. Subsystems for aircraft lighting must combine minimal weight, precision optical control, simplified wiring, and excellent dependability. Conventional methods frequently use many parallel control lines and *centrally controlled drivers*; however, the wiring overhead increases dramatically as the number of individually controllable segments increases. A scalable approach that keeps the connection complexity almost constant as more segments are added is the **daisy-chainable segment** concept, in which each segment receives data, applies local settings, and passes the remaining data downstream.
 
-Using the design of an **LED driver IC** as a demonstrator, the overarching project seeks to **identify and close gaps**
-in the open-source design flow and to establish a reproducible, validated toolchain for mixed-signal system design.
+**Mixed-signal LED drivers** combine analog current-driving circuits with digital control logic. The digital part is responsible for controlling **PWM (Pulse-Width Modulation)**, managing configuration registers, coordinating interfaces, and ensuring correct timing behaviour. AES’s baseline concept specifies an LED driver IC operating from **18–36 V** and is required to manage at least *four channels* with separately adjustable channel currents, **low-side PWM**, and **16-bit dimming precision**. Perceptual simultaneity is a crucial system constraint. The 25th IC should have completed reception within 25 ms from the time the first IC begins receiving, so that the change appears simultaneous to human observers. The internal requirements report further details an initial digital approach using **UART I/O with AES's custom framing protocol "Flexlink"**, forming the starting point for this thesis’ *digital design and validation*. 
 
-::: callout-note
-### Project Context
-This thesis forms the **technical pre-work** of a multi-partner initiative that extends the *IIC-OSIC-TOOLS* environment
-with the *IHP SG13G2 OpenPDK*, enabling future open-source mixed-signal tapeouts for SMEs and universities. 
-:::
-
-The long-term objective of the parent project is to extend the **open-source IIC-OSIC-TOOLS** developed by *Prof. Pretl
-(JKU Linz)* with the **IHP OpenPDK SG13G2**, a 130 nm SiGe BiCMOS process offering analog and RF capabilities suited for
-power management, sensor, and communication ICs.
-
-By integrating the PDK into the IIC-OSIC-TOOLS flow, the project aims to make **open-source chip design accessible for
-SMEs**, who have so far been restricted to board-level development due to the prohibitive cost and complexity of
-commercial EDA ecosystems. This initiative aligns with the global movement toward **democratizing IC design**,
-exemplified by the formation of the *IEEE SSCS Technical Committee on Open Source Ecosystem (TC-OSE)*.
-
-
-## Scope of the Thesis
-
-Within this framework, the present thesis establishes the **proof of concept for the analog front-end** of the LED driver IC.  
-The work focuses on developing, simulating, and taping-out an **operational amplifier (OTA)** using the **IHP SG13G2
-PDK** and the **IIC-OSIC-TOOLS**.
-
-The design was submitted to the **IHP Open Multi-Project Wafer (MPW) Run in July 2025**, demonstrating a complete,
-fabrication-ready analog layout realized entirely with open-source tools such as **Xschem**, **Ngspice**, **KLayout**,
-**Klayout-PEX**, and **CACE**.
-
-::: callout-important
-### Technical Milestone
-The successful **tape-out of the OTA** represents one of the earliest demonstrations of the SG13G2 OpenPDK using the
-IIC-OSIC toolchain and serves as a validation of the *open-source analog flow*.
-:::
+The proposed AES LED driver constitutes a mixed-signal integrated system combining digital communication and control logic with precision analog current regulation and power management. This thesis focuses on the **design and validation of the digital subsystem** within this mixed-signal architecture.
 
 ## Motivation and Challenges
 
-The analog subsystem of an LED driver in **aircraft cabin lighting** must regulate voltages between **18 V and 32 V**,
-ensuring efficiency, low noise, and individual seat controllability.
+In an aircraft cabin, **Lighting** is one of the most visible parts of the passenger experience. **Light-emitting diodes (LEDs)** are used widely in modern aircraft cabin instead of fluorescent tubes, because of their smaller, lighter, more efficient nature and also produces *various colors*. An airline can create different *light effects* for each phase of a flight with *red, green, blue and white (RGBW)* LEDs, for instance a bright, neutral light for boarding, a warm light during the meal service, and a dim, blue light at night. 
 
-Such power-management circuits are particularly sensitive to **layout-dependent parasitic effects**, which can degrade
-performance. Hence, a major emphasis of this work lies in the **DRC- and LVS-clean** design and its reliability in
-open-source flows.
+A cabin contains many light segments along the ceiling and the side walls. All these segments should change their colour and brightness simultaneously to avoid *visible flicker*. This is achieved by sending the brightness values to all segments over a digital communication line by a *central controller*. 
 
-## Methodological Contributions
+Electronics for aircraft must also be *reliable and cost-effective*. Each extra component adds cost and a possible point of failure. In the current solution, each RGBW segment contains an **STM32C011F6 microcontroller**[@st_stm32c011]. It receives the commands over UART, passes them on to the next segment, sends the answers back and generates **four PWM signals**, one for each colour channel. Each PWM signal switches an **LED driver** that sets the current of its channel, in which 8 LEDs are connected in series.
 
-Beyond the circuit-level design, this research establishes a **validated analog verification workflow** under fully open
-conditions. The complete flow — from schematic capture, device sizing, and layout to LVS, PEX, and post-layout
-simulation — was developed within the *IIC-OSIC-TOOLS* environment.
+Using field-programmable gate array (FPGA) for communication reduces cost and point of failures by handling **more than one** RGBW segment.
 
-Insights gained from the OTA design, including *device matching*, *guard-ring implementation*, *fill density*, and *PEX
-consistency*, are being integrated into improvements of the toolchain for future mixed-signal designs.
+This thesis  investigates this approach together with **AES Aircraft Elektro/Elektronik System GmbH** in Bremen. The work uses the **Cologne Chip GateMate FPGA**, which is developed in Germany, and a fully open-source design flow consisting of **Yosys, nextpnr and openFPGALoader**.
+
+### Problem statement
+
+The design of a digital subsystem that ensures precise local PWM control and deterministic, low-overhead daisy-chain forwarding under strict timing constraints is still a major issue, even if the high-level requirements are clear. 16-bit dimming, minimum PWM frequency, minimal wiring, and the 25-segment simultaneity limitation must all be met by the system. The digital architecture must also provide optional status/response pathways without sacrificing throughput and specify clear interfaces for per-channel current regulation.
+
+Therefore, the problem addressed in this thesis is: 
+
+**To use an open-source toolchain to develop, prototype, and test a Digital Control & Forwarding Subsystem that satisfies requirements for a daisy-chainable RGBW LED driver idea, proving accuracy, timing closure, and scalability on an FPGA platform.**
+
+This implementation uses chain of LEDs. One controller sends the data for all segments (peripherals), and each node passes the data on to the next node. This structure is called a **daisy-chain arrangement**. In the AES system, **PIC** is the **controller** and it sends data to all **peripherals** with the company's own **Flexlink protocol** over a **9-bit UART interface**.
+
+In a daisy-chain arrangement, each node must perform four main tasks:
+1. **Receive:** Take the data that belongs to its own LED segment.
+2. **Forward:** Pass the rest of the data to the next node, with as little delay as possible. 
+3. **Brightness Data:** Convert its brightness data into pulse-width modulation (PWM) signals for its respective channels - red, green, blue and white LEDs. 
+4. **Response:** Send information, such as its identification number and temperature, back to the controller.
+
+![System architecture of the prototype: PC master, USB-TTL adapter and two daisy-chained GateMate nodes. Blue = uplink (master to segments), red = downlink (segments to master), green = PWM to the LED segment.](images/ch1_system_architecture){#fig-system-architecture width=100%}
+
+## Objectives {#sec-objectives}
+
+The **main objective** of this thesis is to design the digital control and forwarding
+subsystem of a daisy-chainable RGBW LED driver, to implement it on a GateMate FPGA with an
+open-source tool flow, and to show on real hardware that it meets the main requirements of
+the AES concept.
+
+This main objective is divided into five specific goals.
+
+1. **Requirements.** Collect the requirements from the AES documents, decide for each one
+   whether it is inside the scope of a digital FPGA design, and derive the key values, such
+   as the clock frequency for a 16-bit PWM above 400 Hz and the update time for 25 segments
+   (@sec-requirements).
+2. **System-level model.** Build a model of the data path in MATLAB/Simulink, from the
+   serial input to the four PWM outputs, and use it as a reference for the RTL design
+   (@sec-simulink).
+3. **RTL design.** Write a synthesizable Verilog design of one *Flexlink node* that
+   receives the Flexlink packets, keeps its own brightness values, forwards the rest with
+   as little delay as possible, generates four 16-bit PWM signals and answers on the
+   downlink. Every node must run the **same** code (@sec-rtl).
+4. **Hardware prototype.** Implement the design on two GateMate evaluation boards, connect
+   them as a daisy chain with a PC as master, and drive real red, green, blue and white LEDs
+   through a MOSFET driver stage (@sec-hardware).
+5. **Evaluation.** Measure the PWM signals, the serial packets and the forwarding delay,
+   and compare the results with the requirements and with the models
+   (@sec-evaluation).
+
+## Scope, Limitations and Contributions {#sec-scope}
+
+### Scope
+
+The thesis covers the **digital part** of the LED driver concept. This includes the serial
+communication with the Flexlink protocol, the forwarding of data along the chain, the
+automatic numbering of the nodes, the answers to the master and the generation of the
+16-bit PWM signals. The design is verified by simulation and tested on hardware.
+
+### Simplifications and Limitations
+
+To keep the work within the time of a Master's thesis, the prototype is simplified in
+several points. These limits are discussed again in @sec-evaluation.
+
+- **Two nodes instead of 25.** The chain consists of two GateMate boards. The behaviour of
+  a chain of 25 segments is derived from the measured delay per node and from calculation.
+- **One RGBW segment per node.** Each node drives four channels. The full concept with
+  several segments per node is not built.
+- **A PC as master.** A PC with a USB-TTL adapter takes the role of the PIC
+  microcontroller of the AES system.
+- **No temperature sensor.** The node answers with a fixed temperature value, so the answer
+  format is complete, but the value is not measured.
+- **No checksum.** Broken packets are detected by their structure, but a wrong bit inside a
+  data byte is not detected.
+- **Simple driver stage.** The LEDs are switched by BS170 MOSFETs with a fixed series
+  resistor. The current is not regulated, and the 2.5 V output of the evaluation board is
+  below the gate voltage for which the BS170 is specified.
+
+### Not in Scope
+
+The **analog part** of the concept is not part of this thesis. This includes the supply
+from 18 V to 36 V, the DC-DC converter, the level shifting of the data line to 3 V to 5 V and
+the regulation of the current in each channel. The design of an ASIC is also not part of
+the work, but the RTL is written so that it can later be moved to an ASIC flow.
+
+### Contributions
+
+The main contributions of this thesis are:
+
+1. **A synthesizable Flexlink node in Verilog** that runs as the same bitstream on every
+   node. It uses cut-through forwarding, gives each node its ID automatically with the
+   *Count Segments* command, sends the answers of all nodes back in the order of the chain,
+   and changes nothing when a packet is incomplete.
+2. **A timing analysis of the daisy chain.** It shows that store-and-forward misses the
+   limit of 25 ms for 25 segments at 1 MBaud, while cut-through forwarding needs only about
+   2.5 ms (@sec-req-timing).
+3. **A working two-node prototype** on the GateMate FPGA, built entirely with open-source
+   tools (Yosys, nextpnr, openFPGALoader), together with a short PC test program that
+   creates the 9-bit Flexlink words with a standard serial adapter.
+4. **A system-level model in MATLAB/Simulink** of the data path and the LED stage, which
+   served as a reference for the RTL design.
+
+## Methodology {#sec-methodology}
+
+The work follows the **V-model**, which is often used for the development of electronic
+systems. The left side of the V goes from the requirements down to the detailed design. The
+right side goes back up, and each test level checks the design level on the same height on
+the left. @fig-v-model shows how the V-model is used in this thesis.
+
+![V-model of this thesis: each design level on the left is verified by the matching test level on the right.](images/ch1_v_model){#fig-v-model width=85%}
+
+The work was carried out in **four phases**, which partly overlap in time.
+
+1. **Requirements and system-level model.** The requirements were collected from the AES
+   documents, and the data path was modelled in MATLAB/Simulink (@sec-requirements,
+   @sec-simulink).
+2. **RTL design.** The Flexlink node was written in Verilog and checked module by module
+   with a self-checking testbench in Icarus Verilog (@sec-rtl).
+3. **FPGA implementation and hardware tests.** The design was built with Yosys and
+   nextpnr, loaded with openFPGALoader into two GateMate boards and tested with a Python
+   program on the PC and a PicoScope oscilloscope (@sec-hardware).
+4. **Evaluation and documentation.** The results were compared with the requirements and
+   the models, and the thesis was written (@sec-evaluation).
+
+The pairs in the V-model are: **requirements ↔ evaluation**, **system architecture ↔
+hardware tests**, and **modules ↔ RTL simulation**. The code of the design and the
+documentation are kept under version control in Git.
+
+## Structure of the Thesis {#sec-structure}
+
+The rest of this thesis is organised as follows.
+
+- **@sec-fundamentals** explains the basics that the work builds on: LEDs and PWM dimming,
+  FPGAs and the GateMate, the digital design flow, serial communication and the Flexlink
+  protocol.
+- **@sec-requirements** lists the requirements, analyses the most important values and
+  explains the design decisions.
+- **@sec-simulink** describes the MATLAB/Simulink model of the data path and the timing
+  model of the chain.
+- **@sec-rtl** presents the RTL design of the Flexlink node, module by module, and its
+  verification by simulation.
+- **@sec-hardware** describes the hardware prototype and the measurements.
+- **@sec-evaluation** compares the results with the requirements and discusses the limits
+  of the work.
+- **@sec-conclusion** summarises the thesis and gives an outlook on further work.

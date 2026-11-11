@@ -1,0 +1,917 @@
+# RTL Design of the Flexlink Node {#sec-rtl}
+
+This chapter describes the Verilog design that runs on each GateMate FPGA in the chain.
+In this thesis, a GateMate that runs this design is called a **Flexlink node**. Every node
+in the chain uses the same design. The first GateMate (node) receives Flexlink packets from
+the *master* (the PC in this prototype) over the *uplink*; every following node receives them from the node before it.
+
+Each node keeps the brightness values of its own LED segment, forwards all other data to
+the next node, generates the PWM signals for its four LED channels and sends answers back
+to the master over the *downlink*. The chapter first lists the rules that the design
+follows (@sec-design-principles) and then explains the design module by module, from the
+top level down to the single blocks.
+
+## Design Principles {#sec-design-principles}
+
+The design follows the requirements provided by AES (@sec-requirements). The details of the implementation follow in the later sections of this chapter. 
+
+**1. Portable, synthesizable code.** The design is written in synthesizable Verilog
+(@sec-verilog) and uses only general elements such as registers, counters, comparators
+and a small memory. **The only GateMate-specific block is the PLL** (`CC_PLL`) in the top
+module; the pin assignment is kept in a separate *constraint file*.
+
+**2. One clock domain.** **All registers run on one system clock**, `clk_sys`, with
+50 MHz. The PLL generates it from the 10 MHz board oscillator. A single clock was chosen
+because it makes the timing simple: every path has one clock period of 20 ns
+(@eq-clock-period), the tool can check all paths in one timing analysis, and no data has
+to cross between *clock domains*. The frequency of 50 MHz was chosen because it gives a PWM frequency above 400 Hz at 16 bit (@sec-pwm-parameters) and for 50 clock
+cycles per UART bit at 1 MBaud, and low enough to leave a safe timing margin. The PWM
+outputs stay off until the PLL reports a stable clock through its *locked* signal, so the
+LEDs cannot show random values while the clock starts.
+
+**3. Safe handling of external signals.** The serial inputs `up_rx` and `dn_rx` come from another device and do not follow the
+FPGA clock. **Each of them passes through a two-flip-flop synchronizer** before it is used
+(@sec-clocking).
+
+**4. The same design on every node.** **Every GateMate in the chain uses the same
+bitstream and the same pin file**; the design contains no fixed node number. Each node
+learns its address at run time with the *Count Segments* command; until then, the
+address register `my_id` (the node ID) holds 0xFF, which means "not counted yet". With this rule, all
+LED nodes are identical, so any node can be replaced by any other without building a new
+bitstream.
+
+**5. Cut-through forwarding.** **A node forwards every word that is not its own as soon
+as it has received it**, instead of first receiving the whole packet (*cut-through*). The
+reason is the time limit of AES: with store-and-forward, the delay would grow by one full
+packet at every node, which exceeds 25 ms for a long chain, while cut-through adds only
+about one word time per node (@sec-daisy-latency). A small *first-in-first-out* (FIFO)
+buffer of eight 9-bit words in each direction holds a word while the transmitter is still
+busy, so that no word is lost when the input and the output are not exactly in step
+(@sec-forwarding).
+
+**6. Changes only after a complete and correct packet.** **A node changes its LED levels
+or its address (my_id) only at the end of packet (EOP)**, and only if the packet was complete:
+the LED levels are taken over only if the node has received all eight of its data bytes,
+and the address only if the Count Segments packet contained exactly one data byte. A received word is accepted only if its stop bit is 1. The reason is that a broken
+packet must not leave the LEDs in a half-updated state, for example with a new red value
+but an old blue value. For this reason, new values become active only when the EOP
+arrives (@sec-uplink-decoder, @sec-error-handling).
+
+**7. Ordered answers on the downlink.** **A node sends its own answer first and then
+passes on the answers of the nodes behind it, and it never mixes two packets.** If it is
+already passing on a packet from the next node, it finishes this packet up to its EOP
+before it starts its own answer. In this way, the master always receives complete
+answers, one after another, and can assign each answer to a node by its address
+(@sec-downlink).
+
+The design is split into **four modules** (@tbl-modules), which are all in one source
+file. Values that may change are defined as **constants at the top of the code**
+(@tbl-design-parameters). Because the baud rate appears only through `CLKS_PER_BIT`, it
+can be changed **without changing the receiver and the transmitter**; at 115,200 baud,
+for example, the value becomes $50{,}000{,}000 / 115{,}200 \approx 434$.
+
+
+| **Module**       | **Task**                                                                        |
+|:-----------------|:--------------------------------------------------------------------------------|
+| `flexlink_node`  | top module: PLL, uplink decoder, LED registers, PWM generator, downlink logic   |
+| `uart_rx9`       | receives one 9-bit UART word (used twice: uplink and downlink)                  |
+| `uart_tx9`       | sends one 9-bit UART word (used twice: uplink and downlink)                     |
+| `fifo9`          | buffer for eight 9-bit words (used twice: uplink and downlink)                  |
+
+: Modules of the Flexlink node design {#tbl-modules}
+
+| **Name**        | **Type**     | **Value**    | **Meaning**                                                   |
+|:----------------|:-------------|:-------------|:--------------------------------------------------------------|
+| `CLKS_PER_BIT`  | parameter    | 50           | clock cycles per UART bit ($50\ \text{MHz} / 1\ \text{MBaud}$)|
+| `MY_TEMP`       | parameter    | 40 (0x28)    | fixed temperature value sent in the LED answer                |
+| `MY_BYTES`      | localparam   | 8            | data bytes kept by each node (4 channels × 16 bit)            |
+| `LED_UP_SOP`    | localparam   | 0x100        | start of an LED data packet (uplink)                          |
+| `LED_DN_SOP`    | localparam   | 0x180        | start of an LED answer (downlink)                             |
+| `CNT_UP_SOP`    | localparam   | 0x160        | start of a Count Segments packet (uplink)                     |
+| `CNT_DN_SOP`    | localparam   | 0x1B0        | start of a Count Segments answer (downlink)                   |
+| `FL_EOP`        | localparam   | 0x176        | end of packet                                                 |
+
+: Parameters and constants of the Flexlink node design {#tbl-design-parameters}
+
+## Top-Level Architecture {#sec-top-level}
+
+The top module `flexlink_node` connects all parts of the node. It contains the PLL, two
+UART receivers, two UART transmitters, two FIFO buffers and the logic that decodes the
+packets, stores the LED levels, generates the PWM signals and builds the answers.
+@fig-top-level shows how these parts are connected. The uplink path runs from the
+input `up_rx` to the output `up_tx`, and the downlink path runs from `dn_rx` to `dn_tx`.
+The PWM generator takes its values from the uplink path and drives the four LED outputs.
+
+![Block diagram of the top module `flexlink_node`. The uplink path is drawn in blue, the downlink path in red and the PWM path in green.](images/ch5_top_level){#fig-top-level width=100%}
+
+### Clock and Reset {#sec-clock-reset}
+
+The evaluation board provides a 10 MHz clock from its on-board oscillator. **A PLL inside
+the GateMate turns this clock into the 50 MHz system clock `clk_sys`**, which drives every
+register of the design. The PLL is the GateMate primitive `CC_PLL`. It is set up with a
+reference frequency of 10 MHz, an output frequency of 50 MHz and the economy performance
+mode (@lst-pll).
+
+```{.verilog #lst-pll lst-cap="Instance of the GateMate PLL in the top module (shortened)"}
+CC_PLL #(
+    .REF_CLK ("10.0"),
+    .OUT_CLK ("50.0"),
+    .PERF_MD ("ECONOMY")
+) pll_inst (
+    .CLK_REF        (clk),
+    .USR_PLL_LOCKED (pll_locked),
+    .CLK0           (clk_sys)
+    // other ports not used
+);
+```
+
+After power-up, the PLL needs a short time before its output frequency is stable. It
+reports a stable clock with the *locked* signal `pll_locked`. **The PWM outputs are held
+low until `pll_locked` is 1**, so the LEDs stay dark while the clock is starting and
+cannot flash with random values.
+
+The design has **no separate reset input**. Instead, every register is given a start
+value in its declaration, for example `reg [7:0] my_id = 8'hFF;`. When the FPGA is
+configured, the bitstream loads these values into the flip-flops, and the design starts
+in a known state. After power-up, all LED levels are 0, no packet is open and the node
+has the address 0xFF. This method works on an FPGA because the configuration sets the
+flip-flops. In an ASIC there is no bitstream, so the start values would have to be set
+by a reset signal (@sec-evaluation).
+
+### Module Overview {#sec-module-overview}
+
+The top module uses **seven instances** of four module types, which are listed in
+@tbl-instances.
+
+| **Instance**   | **Module**  | **Task**                                                   |
+|:---------------|:------------|:-----------------------------------------------------------|
+| `pll_inst`     | `CC_PLL`    | 10 MHz to 50 MHz clock (@sec-clock-reset)                  |
+| `u_up_rx`      | `uart_rx9`  | receives the uplink words from `up_rx`                     |
+| `u_up_q`       | `fifo9`     | holds uplink words that wait for the transmitter           |
+| `u_up_tx`      | `uart_tx9`  | sends the forwarded uplink words on `up_tx`                |
+| `u_dn_rx`      | `uart_rx9`  | receives the answers of the next node from `dn_rx`         |
+| `u_dn_q`       | `fifo9`     | holds downlink words that wait for the transmitter         |
+| `u_dn_tx`      | `uart_tx9`  | sends the answers on `dn_tx`
+
+: Instances in the top module `flexlink_node` {#tbl-instances}
+
+Besides these instances, the top module contains **three functional blocks** that are
+not separate modules. They are written directly in `flexlink_node` as `always` blocks.
+
+1. **Uplink decoder.** It looks at every word that arrives on the uplink. It keeps the
+   eight data bytes that belong to the node (GateMate), takes its ID from a *Count Segments* packet
+   and passes all other words on to the uplink FIFO (@sec-uplink-decoder).
+2. **Downlink logic.** It sends the answer of the node and then passes on the answers
+   that come from the next node, without mixing two packets (@sec-downlink).
+3. **PWM generator.** It compares one free-running 16-bit counter with the four stored
+   LED levels and drives the outputs `seg1` to `seg4` (@sec-pwm-generator).
+
+These blocks and the instances exchange data through **internal signals**. Most of them
+are short *pulses* that are 1 for exactly one clock cycle and tell the next block that
+new data is ready. The most important internal signals are listed in
+@tbl-internal-signals.
+
+| **Signal**                    | **Width** | **Block**        | **Meaning**                                                                 |
+|:------------------------------|:----------|:-----------------|:----------------------------------------------------------------------------|
+| `clk_sys`                     | 1         | PLL              | 50 MHz system clock for all registers                                       |
+| `pll_locked`                  | 1         | PLL              | 1 when the clock is stable; enables the PWM outputs                         |
+| `up_data`, `up_valid`         | 9, 1      | uplink receiver  | received uplink word and its one-cycle *valid* pulse                        |
+| `in_frame`                    | 1         | uplink decoder   | 1 between SOP and EOP                                                       |
+| `is_led`, `is_cnt`            | 1, 1      | uplink decoder   | type of the open packet (LED data or Count Segments)                        |
+| `keep_count`                  | 4         | uplink decoder   | number of own data bytes already kept (0 to 8)                              |
+| `frame_data`                  | 64        | uplink decoder   | the eight own data bytes of the current packet                              |
+| `cnt_got`, `cnt_extra`        | 1, 1      | uplink decoder   | count value received; more than one data byte received (packet is wrong)    |
+| `temp_id`                     | 8         | uplink decoder   | count value of the current packet, copied into `my_id` at EOP only if the packet was correct |
+| `my_id`                       | 8         | uplink decoder   | node ID; 0xFF until the first correct Count Segments packet                 |
+| `level_red` … `level_white`   | 16 each   | uplink decoder   | LED levels used by the PWM generator, updated at EOP                        |
+| `fwd_data`, `fwd_valid`       | 9, 1      | uplink decoder   | word to be forwarded and its pulse into the uplink FIFO                     |
+| `led_done`, `cnt_done`        | 1, 1      | uplink decoder   | pulses after a correct LED or Count Segments packet; start the answer       |
+| `reply_pending`, `reply_w`    | 1, 3      | downlink logic   | own answer still to be sent; index of the next answer word                  |
+| `passing_packet`              | 1         | downlink logic   | 1 while a packet of the next node is being passed on                        |
+| `pwm_counter`                 | 16        | PWM generator    | free-running counter, one period every 65,536 cycles (about 763 Hz)         |
+
+: Main internal signals of the top module {#tbl-internal-signals}
+
+### Top-Level Ports {#sec-top-ports}
+
+The ports of `flexlink_node` are the connections between the design and the pins of the
+FPGA. They fall into **four groups**: the clock input, the four serial lines of the
+Flexlink chain, the four segment outputs for the LEDs, and the outputs for the on-board
+LEDs of the evaluation board. @tbl-top-ports lists all ports.
+
+| **Port**       | **Direction** | **Width** | **Pmod pin** | **Meaning**                                                        |
+|:---------------|:--------------|:----------|:-------------|:-------------------------------------------------------------------|
+| `clk`          | input         | 1         | —            | 10 MHz clock from the on-board oscillator, input of the PLL        |
+| `up_rx`        | input         | 1         | 1            | uplink in, from the master (first node) or from the previous node  |
+| `dn_tx`        | output        | 1         | 2            | downlink out, to the master (first node) or to the previous node   |
+| `up_tx`        | output        | 1         | 3            | uplink out, to the next node                                       |
+| `dn_rx`        | input         | 1         | 4            | downlink in, from the next node                                    |
+| `seg1`         | output        | 1         | 7            | PWM signal of the red channel                                      |
+| `seg2`         | output        | 1         | 8            | PWM signal of the green channel                                    |
+| `seg3`         | output        | 1         | 9            | PWM signal of the blue channel                                     |
+| `seg4`         | output        | 1         | 10           | PWM signal of the white channel                                    |
+| `vref_2v5`     | output        | 1         | —            | constant high level, used as a 2.5 V reference on the breadboard   |
+| `leds_n[7:0]`  | output        | 8         | —            | on-board LEDs D1 to D8, *active low* (0 = LED on)                  |
+
+: Ports of the top module `flexlink_node` {#tbl-top-ports}
+
+**The serial ports come in pairs.** Each node has one receiver and one transmitter for
+each direction. On the uplink, `up_rx` receives the packets and `up_tx` sends the
+forwarded words to the next node. On the downlink, `dn_rx` receives the answers of the
+next node and `dn_tx` sends them, together with the node's own answer, towards the
+master. Because every node uses the **same pins**, the chain is built by simply
+connecting `up_tx` of one node to `up_rx` of the next node, and `dn_tx` of the next node
+to `dn_rx` of the node before it.
+
+**The last node needs no special design.** Its outputs `up_tx` and its input `dn_rx` are
+simply not connected. The open input `dn_rx` is held high by a pull-up resistor in the
+pin file (@sec-hw-flow). A high level is the idle level of a UART line, so the receiver
+of the last node sees no start bit and stays idle.
+
+**The on-board LEDs are only for checking.** They are not needed for the function of
+the node, but they make its state visible without an oscilloscope. Because the LEDs are
+*active low*, the design drives them with inverted signals:
+
+- D1 to D4 show the four PWM signals, so they shine with the same brightness as the
+  external LEDs,
+- D5 to D8 show the lower four bits of the node ID `my_id`. Before the first Count
+  Segments packet, the ID is 0xFF, so all four LEDs are on. After the count, GM1 (ID 00)
+  shows no LED and GM2 (ID 01) shows only D5.
+
+The assignment of the ports to the physical pins of the GateMate is not part of the
+Verilog code. It is made in the constraint file and is described in @sec-hw-flow.
+
+## UART Receiver and Transmitter {#sec-uart-rxtx}
+
+Every node contains two UART receivers (`uart_rx9`) and two UART transmitters
+(`uart_tx9`), one of each for the uplink and for the downlink (@sec-module-overview).
+Both modules handle one Flexlink word at a time. A word has **9 data bits** and is sent
+as an 11-bit frame with one start bit and one stop bit (@sec-9bit-uart). The data bits
+are sent with the *least significant bit (LSB) first*. At 1 MBaud, one bit lasts
+1 µs, which is `CLKS_PER_BIT` = 50 cycles of the 50 MHz system clock.
+
+### Receiver {#sec-uart-rx}
+
+The receiver has to solve two problems. First, the input line comes from another device
+with its own clock, so it can change at any time relative to the system clock. Second, the
+receiver must read each bit at a moment when the bit is stable, which is in the **middle**
+of the bit (@sec-uart).
+
+**Input synchronizer.** The input `rx` first passes through two flip-flops in a row
+(`rx_meta` and `rx_sync`). If the first flip-flop samples the line exactly while it
+changes, it can become *metastable* for a short time. The second flip-flop gives it one
+full clock cycle to settle, so the rest of the receiver only sees a clean signal
+(@sec-clocking). The price is a delay of two clock cycles, which is 40 ns and very small
+compared with the bit time of 1 µs.
+
+**State machine.** The receiver itself is a small *finite state machine (FSM)* with four
+states, shown in @fig-uart-rx-fsm. A counter `clk_cnt` counts the clock cycles inside a
+bit, and `bit_idx` counts the data bits.
+
+![State machine of the UART receiver `uart_rx9`.](images/ch5_uart_rx_fsm){#fig-uart-rx-fsm width=100%}
+
+
+1. **IDLE.** The line is high. The receiver waits for a falling edge, which is the start
+   of the start bit.
+2. **START.** The receiver waits for half a bit, `CLKS_PER_BIT/2` = 25 cycles, until the
+   middle of the start bit. If the line is still low, a real start bit has arrived and the
+   receiver goes to DATA. If the line is high again, the falling edge was only a short
+   glitch, and the receiver goes back to IDLE.
+3. **DATA.** From the middle of the start bit, the receiver waits one full bit
+   (50 cycles) at a time. Each wait ends in the middle of the next data bit, where the bit
+   is stored at position `bit_idx` of `data`. After the 9th bit (`bit_idx` = 8), the
+   receiver goes to STOP.
+4. **STOP.** After one more bit time, the receiver is in the middle of the stop bit. A
+   correct stop bit is high. Only then is the output `valid` set to 1 for one clock cycle.
+   If the stop bit is low, the frame is broken, and the word is dropped without a
+   `valid` pulse. In both cases, the receiver returns to IDLE.
+
+@lst-uart-rx shows the DATA and STOP states. Because the bits are stored with
+`data[bit_idx]` and `bit_idx` counts up from 0, the first received bit becomes bit 0, which
+is exactly the LSB-first order of the UART.
+
+```{.verilog #lst-uart-rx lst-cap="DATA and STOP states of the UART receiver uart_rx9"}
+DATA:  if (clk_cnt == CLKS_PER_BIT - 1) begin         // middle of each data bit
+           clk_cnt       <= 16'd0;
+           data[bit_idx] <= rx_sync;
+           if (bit_idx == 4'd8) state <= STOP;
+           bit_idx <= bit_idx + 4'd1;
+       end else clk_cnt <= clk_cnt + 16'd1;
+
+STOP:  if (clk_cnt == CLKS_PER_BIT - 1) begin         // stop bit must be 1
+           clk_cnt <= 16'd0;
+           state   <= IDLE;
+           valid   <= (rx_sync == 1'b1);
+       end else clk_cnt <= clk_cnt + 16'd1;
+```
+
+**When is a word ready?** The `valid` pulse comes in the middle of the stop bit. Counted
+from the falling edge of the start bit, this is half a start bit, nine data bits and one
+more bit, so $0.5 + 9 + 1 = 10.5$ bit times. This number is important for the forwarding
+delay in @sec-forwarding. The receiver returns to IDLE already in the middle of the stop
+bit, so it is ready for the next start bit even if the next word follows without any gap.
+
+@fig-uart-rx-sampling shows the sample points and the moment when the word is ready.
+
+![Sampling of one Flexlink word by the receiver. Each bit is read in its middle, and the word is ready 10.5 bit times after the falling edge of the start bit.](images/ch5_uart_rx_sampling){#fig-uart-rx-sampling width=100%}
+
+**How exact must the clock be?** The receiver uses its own clock to measure the bit times,
+so a small difference between the clocks of sender and receiver adds up over the frame.
+Since the receiver samples in the middle of each bit, the last sample (the stop bit) may
+move by up to half a bit before it lands in the wrong bit. This allows a total clock
+difference of about $0.5 / 10.5 \approx 4.8\ \%$ between sender and receiver. The
+GateMate nodes use the same design and similar crystal oscillators, so their difference is
+far below this limit.
+
+### Transmitter {#sec-uart-tx}
+
+The transmitter is simpler, because it creates the timing itself. When the input `send` is
+1 for one clock cycle and the transmitter is free, it loads the complete frame into an
+11-bit shift register:
+
+```{.verilog #lst-uart-tx lst-cap="Loading the frame in the UART transmitter uart_tx9"}
+shift     <= {1'b1, data, 1'b0};   // {stop bit, 9 data bits, start bit}
+bits_left <= 4'd11;
+```
+
+The start bit (0) is in the lowest position, followed by the nine data bits and the stop
+bit (1). The output `tx` always shows the lowest bit of `shift`. Every 50 clock cycles, the
+register is shifted one place to the right, so the bits leave in the order start bit,
+`data[0]` … `data[8]`, stop bit, which is again LSB first. The signal `busy` is 1 while
+bits are left to send. The modules that use the transmitter only start a new word when
+`busy` is 0. When no word is being sent, `tx` is held high, which is the idle level of
+the line.
+
+## Uplink Decoder {#sec-uplink-decoder}
+
+The uplink decoder is the central block of the node. It is written directly in the top
+module as one `always` block. Every time the uplink receiver delivers a word (`up_valid`
+= 1), the decoder decides what to do with it. There are only **three possible actions**:
+
+- **keep** the word, because it belongs to this node,
+- **forward** the word to the next node,
+- **change** the word and forward it (only for the count value, @sec-count-segments).
+
+### Word Types {#sec-decoder-words}
+
+The decoder first looks at the type of the word. The 9th bit tells control words from data
+words (@sec-9bit-uart). @tbl-decoder-words lists the four cases and the action of the decoder.
+
+| **Word**                    | **Condition**                | **Action of the decoder**                                                |
+|:----------------------------|:-----------------------------|:-------------------------------------------------------------------------|
+| EOP                         | `up_data == 9'h176`          | act on the finished packet, forward the EOP, close the packet            |
+| SOP (any command)           | `up_data[8] == 1`, not EOP   | forward the SOP, open a new packet, remember its type                    |
+| Data word inside a packet   | `up_data[8] == 0`, `in_frame` | keep, change or forward, depending on the packet type                   |
+| Data word outside a packet  | `up_data[8] == 0`, no `in_frame` | ignore (not forwarded)                                              |
+
+: Word types and the action of the uplink decoder {#tbl-decoder-words}
+
+**SOP.** Any word with the 9th bit set, except the EOP, is treated as the start of a
+packet. The decoder forwards it at once, sets `in_frame` to 1 and stores the packet type in
+two flags. `is_led` is 1 for the LED command 0x100, and `is_cnt` is 1 for the Count
+Segments command 0x160. The counters of the packet are set back to 0. A new SOP also ends
+any packet that was still open, which is how the node recovers from a lost EOP
+(@sec-error-handling).
+
+**Unknown commands.** If the SOP is neither 0x100 nor 0x160, both flags stay 0. All data
+words of this packet are then forwarded unchanged, and nothing in the node changes. This
+makes the design open for new commands in the future. A node that does not know a command
+simply passes it on to the nodes behind it.
+
+**Data words.** What happens with a data word depends on the packet type, as described in
+the next two sections and in @sec-count-segments.
+
+**EOP.** The EOP is the moment when the node acts on the packet. Only here are new LED
+levels or a new ID taken over, and only if the packet was correct. The EOP is then
+forwarded, and `in_frame` is set back to 0.
+
+@fig-decoder-flow shows how the decoder handles one received word.
+
+![Decision flow of the uplink decoder for one received word.](images/ch5_decoder_flow){#fig-decoder-flow width=80%}
+
+### LED Data Packet {#sec-decoder-led}
+
+For an LED packet, the node must keep the **first eight data bytes** and forward all other
+bytes. The decoder counts the kept bytes in `keep_count`. As long as `keep_count` is
+smaller than `MY_BYTES` = 8, each data byte is shifted into the 64-bit register
+`frame_data` from the right:
+
+```{.verilog #lst-decoder-keep lst-cap="Keeping the own data bytes of an LED packet"}
+if (is_led && keep_count < MY_BYTES) begin
+    // mine, push in from the right
+    frame_data <= {frame_data[55:0], up_data[7:0]};
+    keep_count <= keep_count + 4'd1;
+end
+```
+
+After eight bytes, the first received byte has moved to the top of the register. The master
+sends each 16-bit value with the high byte first, in the order red, green, blue and white,
+so the four values sit in fixed places of `frame_data`, as shown in @tbl-frame-data.
+
+| **Bytes received** | **Position in `frame_data`** | **LED level**  |
+|:-------------------|:-----------------------------|:---------------|
+| 1 and 2            | bits 63 … 48                 | `level_red`    |
+| 3 and 4            | bits 47 … 32                 | `level_green`  |
+| 5 and 6            | bits 31 … 16                 | `level_blue`   |
+| 7 and 8            | bits 15 … 0                  | `level_white`  |
+
+: Position of the own data bytes in the register `frame_data` {#tbl-frame-data}
+
+When `keep_count` has reached 8, every further data byte of the packet belongs to a node
+further down the chain and is forwarded. This is the reason why the same code works on
+every node. The first node keeps the first eight bytes, the second node receives the
+packet *without* these bytes and therefore again keeps its "first" eight bytes, and so on.
+
+At the EOP, the new values are copied from `frame_data` into the four LED level registers,
+but only if exactly all eight bytes were received:
+
+```{.verilog #lst-decoder-eop lst-cap="Taking over the LED levels at the EOP"}
+if (in_frame && is_led && keep_count == MY_BYTES) begin   // got all my 8 bytes
+    level_red   <= frame_data[63:48];
+    level_green <= frame_data[47:32];
+    level_blue  <= frame_data[31:16];
+    level_white <= frame_data[15:0];
+    led_done    <= 1'b1;    // only answer after a good frame
+end
+```
+
+The pulse `led_done` tells the downlink logic that the node must send an LED answer
+(@sec-downlink). If the packet ended before all eight bytes arrived, the old levels stay
+active and the node does not answer.
+
+## Cut-Through Forwarding {#sec-forwarding}
+
+All words that the decoder does not keep are forwarded to the next node. The node does
+this **word by word**. A word is sent on as soon as it has been received, without waiting
+for the rest of the packet. This method is called *cut-through forwarding*, in contrast to
+*store-and-forward*, where the whole packet is received first (@sec-daisy-latency).
+@sec-req-timing showed that only cut-through meets the limit of 25 ms for 25 segments.
+
+### Forwarding Path {#sec-forwarding-path}
+
+The forwarding path has three steps, shown in @fig-forwarding-path. 
+
+![Forwarding path of the uplink. Words that are not kept go through the FIFO to the uplink transmitter.](images/ch5_forwarding_path){#fig-forwarding-path width=100%}
+
+1. **Decoder.** For every word that must be forwarded, the decoder puts the word on
+   `fwd_data` and sets `fwd_valid` to 1 for one clock cycle.
+2. **FIFO.** The pulse writes the word into the uplink FIFO `u_up_q`, a small first-in,
+   first-out buffer with space for eight 9-bit words.
+3. **Transmitter.** A one-line control block reads the FIFO whenever a word is waiting and
+   the transmitter is free:
+
+```{.verilog #lst-up-send lst-cap="Control of the uplink transmitter"}
+always @(posedge clk_sys)
+    up_send <= !up_q_empty && !up_busy && !up_send;   // something waiting + transmitter free
+```
+
+The term `!up_send` makes sure that `up_send` is only a one-cycle pulse, so each word is
+read from the FIFO exactly once.
+
+**Why a FIFO is needed.** The receiver and the transmitter both work at 1 MBaud, so on
+average a word leaves the node as fast as it arrives. But the moments do not match
+exactly. The next word can be fully received while the transmitter is still sending the
+previous one, because the transmitter started a little later. The FIFO holds the word for
+this short time, so nothing is lost. In normal operation, the FIFO holds at most one or
+two words. A depth of eight words gives a safe margin.
+
+@fig-flexlink-forwarding shows the effect on a packet. GM1 receives the full packet from
+the master, keeps its eight bytes, and forwards the SOP, the eight bytes of GM2 and the
+EOP. GM2 therefore receives a shorter packet, in which its own data is again at the start.
+
+![LED data packet as received by GM1 from the master (top) and as forwarded by GM1 to GM2 (bottom). GM1 keeps its own eight data bytes and forwards all other words.](images/ch2_flexlink_packet){#fig-flexlink-forwarding width=100%}
+
+### Forwarding Delay {#sec-forwarding-delay}
+
+The delay of one node is the time from the start bit of a word at `up_rx` to the start bit
+of the same word at `up_tx`. It has two parts.
+
+1. **Receiving.** The receiver delivers the word in the middle of the stop bit, which is
+   10.5 bit times after the start bit (@sec-uart-rx).
+2. **Processing.** A few clock cycles are added by the synchronizer, the decoder, the
+   FIFO, the control block `up_send` and the output register of the transmitter.
+
+$$
+t_\text{fwd} = 10.5 \cdot T_\text{bit} + n \cdot T_\text{clk}
+$$ {#eq-fwd-delay-rtl}
+
+In the simulation of the final design, the delay is **10.65 µs**, so the processing adds
+only about 0.15 µs, or 7 to 8 clock cycles (@sec-hw-chain). The receiving part cannot be
+made shorter, because the node can only decide what to do with a word after it has
+received the whole word. With store-and-forward, in contrast, the delay of the first node
+alone would be the time of the whole remaining packet, which is
+$(8 \cdot 24 + 2) \cdot 11\ \mu\text{s} \approx 2.1\ \text{ms}$ for the first of 25 nodes.
+
+## Count Segments {#sec-count-segments}
+
+All nodes run the same bitstream, so no node knows its position in the chain after
+power-up. To give every node its own ID, the master sends a **Count Segments** packet. The
+idea is like a number passed along a row of people. Each person writes down the number
+they receive, adds one and passes the new number on.
+
+### Procedure {#sec-count-procedure}
+
+1. After power-up, every node has the ID 0xFF, which means "not counted yet".
+2. The master sends `160 | 00 | 176`.
+3. GM1 receives the value 00. It stores it as its new ID and forwards **01** instead of
+   00.
+4. GM2 receives `160 | 01 | 176`, stores 01 and forwards 02, and so on along the chain.
+5. At the EOP, each node takes over the new ID and answers with `1B0 | my_id | 176`
+   (@sec-downlink).
+
+The master therefore receives one answer per node, and the IDs in the answers tell it how
+many nodes are in the chain.
+
+@fig-count-segments shows the procedure for the two nodes of the prototype.
+
+![Count Segments with two nodes. Each node takes the received value as its ID and forwards the value plus one. Both nodes answer in chain order.](images/ch5_count_segments){#fig-count-segments width=100%}
+
+@lst-count shows the part of the decoder that handles the count value. It is only used
+for the **first** data byte of a Count Segments packet (`!cnt_got`).
+
+```{.verilog #lst-count lst-cap="Handling of the count value in the uplink decoder"}
+else if (is_cnt && !cnt_got) begin
+    cnt_got <= 1'b1;
+    temp_id <= up_data[7:0];        // wait till EOP, take it only if packet is ok
+    if (up_data[7:0] != 8'hFF) begin
+        fwd_data  <= {1'b0, up_data[7:0] + 8'd1};   // next GM gets +1
+        fwd_valid <= 1'b1;
+    end
+end
+```
+
+### Safety Rules {#sec-count-rules}
+
+The ID decides which LED data a node shows in the answers to the master, so a wrong ID must
+be avoided. The design uses three rules.
+
+1. **The new ID is taken over only at the EOP.** The received value is first stored in
+   `temp_id`. It is copied into `my_id` at the EOP, and only if the packet contained
+   exactly one data byte (`cnt_got` = 1 and `cnt_extra` = 0). A second data byte sets
+   `cnt_extra` and makes the whole packet invalid. A packet without an EOP never reaches
+   the copy step. In all these cases, the node keeps its old ID and does not answer.
+2. **0xFF is not counted further.** If a node receives 0xFF, adding one would give 0x00,
+   and a node further down would get the same ID as the first node. The node therefore
+   takes the value 0xFF itself but forwards no count value. The next node receives a
+   packet without a value and keeps its old ID. Since 0xFF also means "not counted yet",
+   a chain can count up to 255 nodes with one byte.
+3. **The value is changed, not added.** The node replaces the received value with the new
+   value. The packet therefore keeps its length of three words at every node, and the
+   forwarding delay is the same as for an LED packet.
+
+## LED Registers and PWM Generator {#sec-pwm-generator}
+
+### LED Level Registers {#sec-led-registers}
+
+The four 16-bit registers `level_red`, `level_green`, `level_blue` and `level_white` hold the
+brightness values that the node shows. They are written only at the EOP of a complete LED
+packet (@lst-decoder-eop). Between two packets, they keep their values, so the LEDs show
+the same light until the master sends new values. This meets requirement R5. At power-up,
+all levels are 0, so the LEDs are off until the first LED packet arrives.
+
+The registers are separate from `frame_data`. During a packet, `frame_data` fills byte by
+byte, but the levels still hold the old values. All four colours change at the same
+moment, at the EOP. A *half-updated* colour, for example a new red value with an old blue
+value, can therefore never appear. This has the same purpose as the latch in the Simulink
+model (@sec-sim-latch).
+
+### PWM Generator {#sec-pwm-counter}
+
+The PWM generator uses **one free-running 16-bit counter** for all four channels. The
+counter `pwm_counter` counts up by one in every clock cycle and goes back to 0 after
+65,535, so one PWM period lasts 65,536 cycles:
+
+$$
+f_\text{PWM} = \frac{50\ \text{MHz}}{65{,}536} \approx 762.9\ \text{Hz}
+$$
+
+For each colour, a comparator checks in every clock cycle whether the counter is still
+smaller than the level. While this is true, the output is 1:
+
+```{.verilog #lst-pwm lst-cap="PWM generator: one shared counter and one comparator per channel"}
+reg [15:0] pwm_counter = 16'd0;
+always @(posedge clk_sys)
+    pwm_counter <= pwm_counter + 16'd1;
+
+always @(posedge clk_sys) begin
+    pwm_red   <= pll_locked && ((level_red   == 16'hFFFF) || (pwm_counter < level_red));
+    pwm_green <= pll_locked && ((level_green == 16'hFFFF) || (pwm_counter < level_green));
+    pwm_blue  <= pll_locked && ((level_blue  == 16'hFFFF) || (pwm_counter < level_blue));
+    pwm_white <= pll_locked && ((level_white == 16'hFFFF) || (pwm_counter < level_white));
+end
+```
+
+The on-time of a channel with level $v$ is therefore $v$ clock cycles, and the duty cycle
+is:
+
+$$
+D = \frac{v}{65{,}536}
+$$ {#eq-rtl-duty}
+
+For example, the level 16,384 gives the output 1 for 16,384 of 65,536 cycles, which is a
+duty cycle of 25 % and an on-time of $16{,}384 \cdot 20\ \text{ns} \approx 328\ \mu\text{s}$
+per period.
+
+**Two special cases.** The level 0 gives an output that is always 0, because the counter
+is never smaller than 0. The highest level, 65,535, needs an extra rule. Without it, the
+output would be 0 for one cycle in every period, when the counter itself is 65,535. The
+term `level == 16'hFFFF` keeps the output at 1 in this case, so 65,535 really means "always
+on". The cost is that the levels 65,534 and 65,535 differ by two cycles instead of one,
+which is not visible.
+
+**Why one shared counter.** One counter for four channels saves three 16-bit counters,
+so 48 flip-flops and three adders. It also makes all four channels switch on at the same
+moment, when the counter is 0. This is visible on the oscilloscope when all four channels
+are measured together (@sec-hw-pwm).
+
+**Output registers.** The comparator results are stored in flip-flops (`pwm_red` …
+`pwm_white`) before they go to the pins. A registered output changes exactly at a clock
+edge and has no short *glitches*, which could appear at the output of the comparator while
+the counter bits change.
+
+**Safe start.** The term `pll_locked &&` holds all PWM outputs at 0 until the PLL reports
+a stable 50 MHz clock (@sec-clock-reset). The four outputs are connected to `seg1` to
+`seg4` and also, inverted, to the on-board LEDs D1 to D4 (@sec-top-ports).
+
+## Downlink: Answers and Temperature {#sec-downlink}
+
+The downlink carries the answers of the nodes back to the master. Each node has two tasks
+here. It must **send its own answer** after a correct packet, and it must **pass on the
+answers** of all nodes behind it. Both share one transmitter, `u_dn_tx`.
+
+### Answer Packets {#sec-answer-packets}
+
+A node answers after every correct LED packet and after every correct Count Segments
+packet. The answers have the format given in @tbl-answers.
+
+| **Trigger**                 | **Answer packet**                 | **Words** |
+|:----------------------------|:----------------------------------|:----------|
+| correct LED packet          | `180 | my_id | temperature | 176` | 4         |
+| correct Count Segments packet | `1B0 | my_id | 176`           | 3         |
+
+: Answer packets of a node {#tbl-answers}
+
+The temperature is the parameter `MY_TEMP` with the fixed value 40 (0x28), because no
+temperature sensor is connected in this prototype. The answer format is already complete,
+so a real sensor value can later be put in its place without changing the protocol.
+
+The answer is built word by word. The counter `reply_w` points to the next word, and the
+signal `reply_word` selects the word that belongs to this position:
+
+```{.verilog #lst-reply-word lst-cap="Selection of the answer word"}
+wire [2:0] reply_last = reply_is_cnt ? 3'd2 : 3'd3;   // index of my EOP
+
+wire [8:0] reply_word =
+    (reply_w == 3'd0)       ? (reply_is_cnt ? CNT_DN_SOP : LED_DN_SOP) :
+    (reply_w == 3'd1)       ? {1'b0, my_id} :
+    (reply_w == reply_last) ? FL_EOP :
+                              {1'b0, MY_TEMP};
+```
+
+For an LED answer, `reply_last` is 3, so the words are SOP, ID, temperature and EOP. For a
+count answer, `reply_last` is 2, so the temperature word is left out.
+
+### Order of the Answers {#sec-answer-order}
+
+The answers of several nodes share one line, so they must not mix. If a word of GM2's
+answer came in the middle of GM1's answer, the master could not read either of them. The
+downlink logic follows one simple rule: **a started packet is always finished first.**
+
+The downlink logic works in every clock cycle in which the transmitter is free:
+
+1. If the own answer is waiting (`reply_pending` = 1) **and** the node is not in the middle
+   of passing on another packet, send the next word of the own answer. After the own EOP,
+   clear `reply_pending`.
+2. Otherwise, if the downlink FIFO `u_dn_q` holds a word from the next node, pass this word
+   on. While passing on, `passing_packet` is 1 until the EOP of that packet has been sent.
+
+The own answer usually comes **first**, because a node finishes the uplink packet before
+the nodes behind it. GM1 receives the EOP about 10.65 µs before GM2, so it starts its
+answer before GM2's answer arrives. The words of GM2's answer that arrive in the meantime
+wait in the downlink FIFO. Once GM1 has sent its own EOP, it passes them on. The master
+therefore receives the answers **in the order of the chain**, first GM1, then GM2 (@fig-downlink-order). 
+
+![Order of the answers on the downlink of GM1. GM1 sends its own answer first. The answer of GM2 waits in the downlink FIFO and is passed on afterwards.](images/ch5_downlink_order){#fig-downlink-order width=100%}
+
+**Is the FIFO deep enough?** Words arrive from the next node at the same rate as they are
+sent, so the number of waiting words grows only while the node sends its own answer. This
+is at most four words for an LED answer, which fits into the eight places of the FIFO.
+Since every node in a longer chain works the same way, the backlog does not grow from node
+to node.
+
+## Error Handling {#sec-error-handling}
+
+A light segment in an aircraft must never show wrong or random light because of one bad
+packet. The design therefore checks the packets at several levels. The general rule is
+simple: **if a packet is not complete and correct, nothing changes.** A node does not take
+over new values, does not change its ID and does not answer. Because a missing answer is
+visible to the master, the master can find out that a packet was lost and send it again.
+
+@tbl-error-cases lists the error cases that the design handles. The behaviour of each case
+was checked by simulation of the final design (@sec-rtl-verification) and on the hardware
+(@sec-hw-robustness).
+
+| **Error case**                        | **Detected by**                                  | **Behaviour of the node**                                   |
+|:--------------------------------------|:-------------------------------------------------|:------------------------------------------------------------|
+| Short glitch on the line              | START state: line high again after half a bit    | no word received                                            |
+| Broken frame (stop bit = 0)           | STOP state of the receiver                       | word dropped, no `valid`                                    |
+| Data word outside a packet            | `in_frame` = 0                                   | word ignored, not forwarded                                 |
+| EOP outside a packet                  | `in_frame` = 0                                   | EOP ignored, not forwarded                                  |
+| LED packet too short (< 8 own bytes)  | `keep_count` ≠ 8 at the EOP                      | old levels kept, no answer                                  |
+| Lost EOP, new SOP arrives             | new SOP restarts the packet                      | open packet dropped, new packet handled normally            |
+| Count packet without value            | `cnt_got` = 0 at the EOP                         | old ID kept, no answer                                      |
+| Count packet with more than one value | `cnt_extra` = 1                                  | old ID kept, no answer                                      |
+| Count value 0xFF                      | value check before forwarding                    | node takes 0xFF, no value forwarded                         |
+| Unknown command                       | `is_led` = `is_cnt` = 0                          | packet forwarded unchanged, no change in the node           |
+
+: Error cases handled by the Flexlink node {#tbl-error-cases}
+
+**Limits of design v1.** Some errors cannot be detected, because the packet has the right
+format.
+
+- **A wrong bit inside a data byte.** If one bit of a brightness byte is changed on the
+  line, the stop bit and the packet structure are still correct, so the wrong value is
+  shown.
+- **Shifted data.** If the master sends one value too many for an earlier node, all later
+  nodes take bytes that were meant for their neighbour, as shown in test C3
+  (@sec-hw-robustness).
+
+Both errors could be found with a **checksum** for each segment, which the master adds to
+the packet and the node checks before it takes over the values. A first version of this
+idea was tried during the work, but it is not part of the final design. It is discussed
+as an extension in [TODO: reference to the outlook in Chapter 8].
+
+**No reset input.** The design has no reset signal. All registers get their start values
+from the bitstream when the FPGA is configured (@sec-clock-reset). If a node ever ends up
+in a wrong state, the next SOP brings the decoder back to a defined state, because every
+SOP sets all packet flags and counters back to their start values.
+
+## Verification by Simulation {#sec-rtl-verification}
+
+Before the design was loaded into the FPGA, it was checked by simulation with the
+open-source simulator Icarus Verilog (@sec-simulation). The testbench
+`tb_flexlink_node.v` connects **two** instances of the node in a chain, exactly as on the
+hardware, and adds a third UART receiver that plays the role of the PC. A task in the
+testbench sends 9-bit words at 1 MBaud to the input of GM1, and the testbench records all
+words that GM1 sends back on its downlink.
+
+The real `CC_PLL` primitive of the GateMate cannot be simulated with Icarus Verilog. The
+testbench therefore contains a small replacement module with the same name and ports,
+which passes the 50 MHz test clock straight through and reports the PLL as locked at once.
+The rest of the design is simulated exactly as it is synthesized.
+
+The testbench is **self-checking**. For each test, it compares the received answers and the
+on-times of the PWM outputs with the expected values and counts the errors. At the end, it
+prints PASS or FAIL. @tbl-sim-tests lists the five tests and their results.
+
+| **Test** | **Stimulus**                                      | **Expected result**                                             | **Result** |
+|:---------|:--------------------------------------------------|:----------------------------------------------------------------|:-----------|
+| 1        | LED packet before Count Segments                  | answers `180 0FF 028 176` twice (both nodes still have ID 0xFF) | PASS       |
+| 2        | Count Segments `160 000 176`                      | answers `1B0 000 176 1B0 001 176`, IDs 0 and 1, GM2 lights D5   | PASS       |
+| 3        | LED packet with 16 data bytes                     | both nodes show their own values and answer                     | PASS       |
+| 4        | short LED packet with 12 data bytes               | only GM1 updates and answers, GM2 keeps its old values          | PASS       |
+| 5        | packet with the unknown command 0x170             | no change, no answer, IDs unchanged                             | PASS       |
+
+: Tests of the self-checking testbench and their results {#tbl-sim-tests}
+
+In test 3, GM1 receives the levels 65,025, 11,025, 32,400 and 0, and GM2 receives 0, 0,
+65,535 and 10,000. The testbench measures the on-time of each PWM output in clock cycles
+over one period and finds exactly these values. For the level 65,535 it counts 65,536
+cycles, which confirms that this level gives an output that is always on. Test 4 shows the
+rule of @sec-decoder-led. GM1 receives its eight bytes and updates, while GM2 receives only
+four bytes, keeps its old values and does not answer.
+
+The simulation of the full chain also gives the forwarding delay of 10.65 µs used in
+@sec-forwarding-delay. Further error cases, such as wrong count packets and missing SOP or
+EOP words, were simulated with the same two-node setup. Their expected results are used
+for the hardware tests in @sec-hw-robustness.
+
+The testbench is started with the script `sim.bat`. The simulation does not create a
+waveform file. All checks are done inside the testbench and printed as text, which makes
+it quick to run the tests again after every change of the code.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

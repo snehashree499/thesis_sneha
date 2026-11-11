@@ -1,0 +1,735 @@
+# Fundamentals and State of the Art {#sec-fundamentals}
+
+This chapter explains the background that is needed to follow the rest of the thesis.
+It starts with the application, the lighting of an aircraft cabin
+(@sec-cabin-lighting). It then explains how LEDs work and how their brightness is controlled (@sec-led-dimming), how an FPGA is built (@sec-fpga-fundamentals) and how a design is brought onto an FPGA (@sec-design-flow). The last technical parts describe serial communication (@sec-serial-communication) and the Flexlink protocol (@sec-flexlink). The chapter ends with an overview of existing solutions and the research gap that this thesis addresses (@sec-state-of-the-art).
+
+## Aircraft Cabin Lighting {#sec-cabin-lighting}
+
+Previously, the lighting system used for aircraft cabins came from **fluorescent technology**, and LEDs were first added only for *coloured mood lighting*. As the efficiency of LEDs increased, they became able to produce the **white light** as well [@krellera2009]. Currently, aircrafts such as the **Airbus A380** and the **Boeing 787** use LED cabin lighting systems that combine white light and coloured LEDs [@lumileds2015].
+
+Light Emitting Diodes offers several advantages that are vital in an aircraft when compared to older light sources. A supplier of such systems reports energy savings of **35 % to 55 %** compared with previous lighting systems, and a lifetime of about **50,000 hours**, which is roughly ten times longer than that of incandescent, fluorescent or halogen lamps. Because LEDs are solid-state devices, they are also smaller, lighter and more resistant to vibration and shock, which reduces fuel consumption and maintenance [@lumileds2015].
+
+The colour control of LEDs allows the cabin light changes with the phase of the flight which is known as *light scenes*. For instance, bright light for boarding, settings that imitate a sunrise in the morning, and a cool light in the evening. On long flights, such programmes are used to shift the sleep rhythm of the passengers slowly towards the time zone of the destination [@lumileds2015]. The aim is to support the mood and the biorhythm of the
+passengers and to create a pleasant atmosphere [@krellera2009].
+
+Electronic equipment for aircraft must meet strict rules. In the European Union, the **European Union Aviation Safety Agency (EASA)** is responsible for the certification of
+aircraft and their equipment. For the technical details, EASA and the U.S authorities
+rely on industry standards that are published jointly by **EUROCAE** in Europe and **RTCA** in
+the USA. EUROCAE ED-14G, which is identically worded to RTCA DO-160G, defines
+environmental test conditions for airborne equipment, for example *temperature, vibration and electromagnetic compatibility* [@eurocae_ed14g]. EUROCAE ED-80, which
+corresponds to RTCA DO-254, gives design assurance guidance for airborne electronic
+hardware, including complex programmable devices such as FPGAs. EASA recognises this
+standard in its Acceptable Means of Compliance *AMC 20-152A* [@easa_amc20152a].
+Certification according to these documents is outside the scope of this thesis
+(@sec-scope), but they explain why reliability, simple and traceable design, and
+documented verification are important for any design that is meant for an aircraft.
+
+## LEDs and LED Dimming {#sec-led-dimming}
+
+### LED Basics {#sec-led-basics}
+
+An **LED** is a semiconductor diode that emits light when a current flows through it in the
+forward direction. The voltage across the LED in this state is called the **forward voltage** $V_F$. It
+depends on the semiconductor material and therefore on the colour. For a typical *5 mm LED* family, the forward voltage at *20 mA* is about **2.1 V** for a red LED (AlInGaP) and
+about **3.2 V** for green and blue LEDs (InGaN) [@avago_hlmp_hx64]. In general, standard
+red, green and yellow LEDs have forward voltages of **1.4 V to 2.6 V**, while blue and white
+LEDs need about **3.1 V to 4.0 V**, depending on the manufacturer [@maxim2004].
+
+The datasheet of a typical 5 mm LED family shows this effect clearly that the dominant
+wavelength of a green InGaN LED changes by several nanometres when the forward current
+changes between low values and 100 mA [@avago_hlmp_hx64].
+
+@fig-led-iv shows the typical shape of the current-voltage curve. Below the forward
+voltage, almost no current flows. Above it, the current rises very steeply, so a small
+change of the voltage gives a large change of the current. For this reason, an LED is
+always operated with a resistor or a current source that limits the current.
+
+![Current-voltage curves of a red and a green/blue LED, drawn with a simple diode model. The points mark the typical forward voltages at 20 mA [@avago_hlmp_hx64].](images/ch2_led_iv_curve){#fig-led-iv width=80%}
+
+### RGBW Colour Mixing {#sec-rgbw}
+
+Each LED has one fixed color when it emits light in a narrow range of wavelengths. In a typical 5 mm LED family, for example, the red LED has a *dominant wavelength*
+of 626 nm, the green LED 525 nm and the blue LED 470 nm [@avago_hlmp_hx64].
+The light of several LEDs is mixed in order to produce other colors, which are called *primaries* [@doe_ledcolor2012].When a red, a green and a blue LED (**RGB**) light up the same area, the eye sees one
+mixed colour, which depends on how bright each LED is compared with the other two
+(@fig-colour-mixing).
+
+![Mixing the light of red, green and blue LEDs.](images/ch2_colour_mixing){#fig-colour-mixing width=60%}
+
+White light can also be produced in this way, by mixing red, green and blue. In general
+lighting, however, white LEDs are mostly made by *phosphor conversion*: a blue or
+near-ultraviolet LED chip is combined with a phosphor that emits yellow light
+[@doe_ledcolor2012]. Compared with such phosphor-converted white LEDs, mixed RGB systems
+have a lower *efficacy* and less colour consistency, both at the start and over time,
+because the red, green and blue LEDs lose brightness at different rates as they age
+[@doe_ledcolor2012]. A fourth, white LED is therefore often added to the three coloured
+ones (**RGBW**). The white LED provides the white light directly, while the coloured LEDs
+are used to set the colour. The LED cabin lighting of aircraft such as the Boeing 787 and
+the Airbus A380 also uses a combination of white and coloured LEDs [@lumileds2015].
+
+The colour of white light is described by its **correlated colour temperature (CCT)**,
+which is given in kelvin (K). It is the temperature at which a heated *black body* would
+have the colour that is closest to the colour of the light source. The CCT describes how
+"warm" (yellowish) or how "cool" (bluish) a white light appears [@doe_ledcolor2012]. A
+lower CCT appears warmer, a higher CCT cooler. Changing the CCT is part of the light
+scenes in a cabin, for example a light that imitates a sunrise in the morning and a cooler
+light in the evening [@lumileds2015]. With RGBW, such changes are made by changing the
+brightness of the four channels.
+
+For the control electronics, RGBW means four separate channels per segment, one for
+each colour. The brightness of every channel must be set on its own. With a resolution
+of 16 bit, each channel has
+
+$$
+2^{16} = 65{,}536
+$$ {#eq-16bit-steps}
+
+brightness steps, from 0 (off) to 65,535 (full brightness).
+
+The same brightness value does **not** give the same light output for every colour. At
+the same current of 20 mA, the *luminous intensity* given in the datasheet of the LED
+family mentioned above is 1150 mcd to 2400 mcd for the red LED, 1990 mcd to 5040 mcd for
+the green LED and 460 mcd to 1150 mcd for the blue LED [@avago_hlmp_hx64]. A green LED can
+therefore appear several times brighter than a blue LED at the same current. To produce a
+wanted colour, each channel needs its own brightness value. In this thesis, the node only
+applies the brightness values it receives from the master (@sec-flexlink).
+
+### Analog Dimming vs. PWM Dimming {#sec-analog-vs-pwm}
+
+There are two basic ways to change the brightness of an LED:
+
+1. *Analog dimming*: the DC current through the LED is reduced.
+2. *Pulse-width modulation (PWM) dimming*: the LED is switched fully on and fully off
+   many times per second. The current is either zero or at its set value, and the
+   brightness depends on how long the LED is on in each period.
+
+Analog dimming is the simpler method, but changing the LED current also changes the
+*chromaticity* of the LED, so its colour shifts. With PWM dimming, the current is either
+off or at its set level, so the chromaticity stays the same [@parasseril2006]. The
+datasheet of the 5 mm LED family used as an example above shows this effect: the
+dominant wavelength of the green LED changes by up to about 10 nm when the forward
+current changes between low values and 100 mA, and the blue LED shows a smaller but
+similar shift [@avago_hlmp_hx64]. In an RGBW system, a colour shift in one channel
+changes the mixed colour. **PWM dimming is therefore used when the colour has to stay
+exact.** @tbl-dimming-methods compares the two methods.
+
+| **Property**             | **Analog dimming**                   | **PWM dimming**                          |
+|:-------------------------|:-------------------------------------|:-----------------------------------------|
+| How brightness is set    | size of the DC current               | ratio of on-time to period               |
+| Colour stability         | colour shifts with current           | colour stays the same                    |
+| Circuit                  | adjustable current source            | switch and digital timing                |
+| Possible problem         | colour shift                         | flicker if the frequency is too low      |
+
+: Comparison of analog and PWM dimming, based on [@parasseril2006; @avago_hlmp_hx64] {#tbl-dimming-methods}
+
+### PWM Parameters and Flicker {#sec-pwm-parameters}
+
+A PWM signal is a square wave with a fixed period $T$. In each period, the signal is high
+for the time $t_\text{on}$ and low for the rest of the period. The *duty cycle* $D$ is the
+part of the period in which the signal is high:
+
+$$
+D = \frac{t_\text{on}}{T}
+$$ {#eq-duty-cycle}
+
+If the LED current during the on-time is $I_\text{LED}$, the average current, and with it
+the perceived brightness, is:
+
+$$
+I_\text{avg} = D \cdot I_\text{LED}
+$$ {#eq-avg-current}
+
+For example, with $I_\text{LED} = 20\ \text{mA}$ and $D = 25\ \%$, the average current is
+$I_\text{avg} = 0.25 \cdot 20\ \text{mA} = 5\ \text{mA}$.
+
+@fig-pwm-duty shows two PWM signals with duty cycles of 25 % and 75 %
+![Ideal PWM signals with 25 % and 75 % duty cycle at $f_\text{PWM} \approx 763$ Hz.](images/ch2_pwm_duty_cycle){#fig-pwm-duty width=90%}
+
+In a digital circuit, a PWM signal is usually made with a *counter* and a *comparator*.
+The counter counts clock cycles from $0$ to $2^N - 1$ and then starts again, where $N$ is
+the resolution in bits. The output is high while the counter value is smaller than the
+brightness value. With this simple rule, the largest value $2^N - 1$ would still leave
+the output low for one clock cycle in every period. The design in this thesis therefore
+treats the largest value as "always on" (@sec-rtl). One full count is one PWM period, so
+the PWM frequency is:
+
+$$
+f_\text{PWM} = \frac{f_\text{clk}}{2^N}
+$$ {#eq-pwm-frequency}
+
+With the values used in this thesis, $f_\text{clk} = 50\ \text{MHz}$ and $N = 16$:
+
+1. Number of steps: $2^{16} = 65{,}536$.
+2. PWM frequency: $f_\text{PWM} = 50{,}000{,}000\ \text{Hz} / 65{,}536 \approx 762.9\ \text{Hz}$.
+3. PWM period: $T = 65{,}536 / 50{,}000{,}000\ \text{Hz} \approx 1.31\ \text{ms}$.
+4. Smallest step, one clock cycle: $1 / 50\ \text{MHz} = 20\ \text{ns}$.
+
+@eq-pwm-frequency shows the basic trade-off of digital PWM: for a fixed clock, every
+additional bit of resolution halves the PWM frequency.
+
+Because the light of a PWM-dimmed LED is switched on and off, the light output changes
+over time. If this change is slow enough, people can see it as *flicker*, or it can lead
+to other effects such as stroboscopic effects. A common measure is the *percent flicker*:
+
+$$
+\text{Percent flicker} = 100\ \% \cdot \frac{L_\text{max} - L_\text{min}}{L_\text{max} + L_\text{min}}
+$$ {#eq-percent-flicker}
+
+where $L_\text{max}$ and $L_\text{min}$ are the highest and the lowest light output within
+one period. For a PWM signal that switches the LED fully off, $L_\text{min} = 0$, so the
+percent flicker is $100\ \%$ for every duty cycle below $100\ \%$.
+
+The recommended practice IEEE 1789-2015 gives limits for flicker in LED lighting. Miller
+and Lehman explain how to apply it in a presentation for the Solid-State Lighting program
+of the U.S. Department of Energy. Lehman was the chair of the IEEE working group that wrote
+the recommended practice. For a flicker frequency of at least 100 Hz, the highest allowed
+percent flicker is the frequency multiplied by $0.08$. A product that stays below this
+value is acceptable for all but the most unusually sensitive persons, and at 1250 Hz or
+higher, 100 % flicker is allowed [@miller_lehman2015].
+
+For the PWM frequency of this thesis:
+
+1. Low-risk limit at 762.9 Hz: $0.08 \cdot 762.9 \approx 61\ \%$.
+2. Percent flicker of full on-off PWM: $100\ \%$.
+3. Since $100\ \% > 61\ \%$, a full on-off PWM at 762.9 Hz is above the low-risk level of
+   IEEE 1789, although it meets the AES requirement of more than 400 Hz.
+
+This point is discussed again in the evaluation (@sec-evaluation).
+
+### Low-Side Switching with a Transistor {#sec-low-side-switching}
+
+An FPGA output cannot drive a typical LED directly. Its current is limited, and its
+voltage can be lower than the forward voltage of the LED. The blue and green LEDs of the
+5 mm family mentioned above, for example, have a typical forward voltage of 3.2 V at
+20 mA [@avago_hlmp_hx64], which is higher than the output level of about 2.5 V of the
+evaluation board used in this thesis (@sec-gatemate-board). A transistor is therefore
+used as a switch between the FPGA and the LED.
+
+In a *low-side switch*, the transistor sits between the LED and ground. The LED and its
+series resistor are connected to the supply voltage $V_S$, and the transistor opens or
+closes the path to ground. The LED then gets its power from $V_S$, and the FPGA only has
+to drive the control input of the transistor.
+
+![Low-side switch of one LED channel as used in the prototype. The FPGA output drives the gate of the BS170 through 100 Ω, and 10 kΩ keeps the gate at 0 V while the FPGA is not configured.](images/ch2_low_side_switch){#fig-low-side width=55%}
+
+When the transistor is on, the series resistor sets the LED current. The resistor that
+gives the wanted current $I_\text{LED}$ is:
+
+$$
+R = \frac{V_S - V_F - V_\text{sw}}{I_\text{LED}}
+$$ {#eq-series-resistor}
+
+where $V_F$ is the forward voltage of the LED and $V_\text{sw}$ is the voltage across the
+switched-on transistor. The prototype uses an N-channel *MOSFET* as the switch
+(@fig-low-side).
+
+A MOSFET is controlled by its gate-source voltage $V_{GS}$. The gate is isolated from the
+channel, so it draws no steady current, and the control circuit only has to charge the
+small gate capacitance at each edge. The *threshold voltage* $V_{GS(th)}$ is the gate
+voltage at which a small drain current, commonly 1 mA, starts to flow
+[@nexperia_an90001]. At this voltage the MOSFET has only started to turn on. It reaches its
+low on-resistance $R_{DS(\text{on})}$ only when it is *fully enhanced*, which needs about
+5 V for logic-level MOSFETs and about 10 V for standard-level MOSFETs. A MOSFET that is only
+partly on works in its linear region and turns a large part of the power into heat
+[@nexperia_an90001]. In the on-state, its power loss is:
+
+$$
+P_\text{cond} = I_\text{LED}^2 \cdot R_{DS(\text{on})}
+$$ {#eq-conduction-loss}
+
+The MOSFET used in this thesis is the **BS170**. It can switch up to 500 mA at up to 60 V,
+and its gate capacitance is at most 60 pF. Its threshold voltage lies between 0.8 V and
+3.0 V, with a typical value of 2.0 V, and its on-resistance is specified only for a gate
+voltage of 10 V [@onsemi_bs170]. With a gate drive of only about 2.5 V from the evaluation
+board, a typical BS170 is switched on, but **not fully enhanced**. For small LED currents
+this is enough, but it is not guaranteed by the datasheet for every part.
+
+Example with typical values, to show how the series resistor is sized (the values of the
+prototype follow in @sec-hw-driver):
+
+1. LED: blue, $V_F = 3.2\ \text{V}$ at $I_\text{LED} = 20\ \text{mA}$ [@avago_hlmp_hx64].
+2. Supply voltage $V_S = 12\ \text{V}$, assumed voltage across the switched-on MOSFET
+   $V_\text{sw} = 0.2\ \text{V}$.
+3. Series resistor: $R = (12 - 3.2 - 0.2)\ \text{V} / 0.02\ \text{A} = 8.6\ \text{V} / 0.02\ \text{A} = 430\ \Omega$.
+4. Power in the resistor: $P_R = I^2 R = (0.02\ \text{A})^2 \cdot 430\ \Omega \approx 0.17\ \text{W}$,
+   so a 0.25 W resistor is enough.
+
+## FPGA Fundamentals {#sec-fpga-fundamentals}
+
+### FPGA Architecture {#sec-fpga-architecture}
+
+A **field-programmable gate array (FPGA)** is an integrated circuit that contains many
+small programmable logic blocks, a programmable network of wires between them, and
+programmable input/output (I/O) blocks around the edge of the chip [@kuon2008]. The user
+decides what each logic block does and how the blocks are connected by loading a
+configuration file, the *bitstream*. The same chip can therefore implement very
+different digital circuits.
+
+The basic logic block contains a *look-up table* (LUT) and a *flip-flop*. A LUT with $k$
+inputs is a small memory with $2^k$ entries. By filling this memory, the LUT can produce
+any logic function of its $k$ inputs. The flip-flop stores one bit and takes over a new
+value at each clock edge, which allows counters, shift registers and other sequential
+circuits [@kuon2008]. Besides these blocks, modern FPGAs contain special blocks such as
+*block RAM* for storing data and *phase-locked loops* (PLLs) for generating clock signals
+[@kuon2008].
+
+@fig-fpga-blocks shows how these blocks are arranged on the chip.
+
+![Simplified structure of an FPGA: logic blocks (LUT and flip-flop), programmable routing, block RAM, a PLL and I/O blocks around the edge. Based on the description in [@kuon2008].](images/ch2_fpga_block_diagram){#fig-fpga-blocks width=80%}
+
+All logic blocks of an FPGA work at the same time. A circuit with four PWM channels
+therefore contains four comparators that run in parallel, while a microcontroller would
+serve the channels one after another in software. For this thesis, this property is the
+main reason to use an FPGA: the node has to receive data, forward data and generate PWM
+signals at the same moment.
+
+### Clocking, Timing and Synchronisation {#sec-clocking}
+
+In a *synchronous* design, all flip-flops change their state at the edge of one common
+clock. Between two clock edges, each signal has to pass through the logic and the wires
+and reach the next flip-flop before the next edge arrives. It must arrive a short time
+before the edge (*setup time*) and stay stable for a short time after it (*hold time*).
+The slowest path in the design, the *critical path*, sets the highest clock frequency
+$f_\text{max}$ at which the design still works. The place-and-route tool calculates this
+value after the implementation (@sec-toolchain).
+
+With the clock of this thesis, every path has one clock period to finish:
+
+$$
+T_\text{clk} = \frac{1}{f_\text{clk}} = \frac{1}{50\ \text{MHz}} = 20\ \text{ns}
+$$ {#eq-clock-period}
+
+The design therefore only works if the $f_\text{max}$ reported by the tool is above
+50 MHz. The value reached in this work is given in @sec-hardware.
+
+A special problem arises with signals that come from outside the FPGA, such as the
+receive line of a serial interface. Such a signal does not follow the FPGA clock, and its
+edges can occur at any time, also inside the setup or hold time of the first flip-flop.
+The flip-flop can then become *metastable*: for some time, its output is neither a clean
+0 nor a clean 1 [@ginosar2011]. The usual protection is a *two-flip-flop synchronizer*.
+The external signal passes through two flip-flops in a row, so a metastable state in the
+first flip-flop has one full clock period to settle before the second flip-flop passes the
+value on [@ginosar2011].
+
+Ginosar gives the *mean time between failures* (MTBF) of a synchronizer as
+[@ginosar2011]:
+
+$$
+\text{MTBF} = \frac{e^{S/\tau}}{T_W \cdot f_C \cdot f_D}
+$$ {#eq-mtbf}
+
+Here, $S$ is the time the flip-flop has to settle, $\tau$ and $T_W$ are properties of the
+flip-flop, $f_C$ is the clock frequency and $f_D$ is the rate at which the input data
+changes. Since $S$ stands in the exponent, one extra clock period of settling time raises
+the MTBF by a very large factor. This is why a second flip-flop is enough in most designs.
+
+### Microcontroller vs. FPGA vs. ASIC vs. LED Driver IC {#sec-device-comparison}
+
+The tasks of a segment node can be solved with different kinds of devices.
+@tbl-device-comparison compares them in general terms.
+
+| **Property**        | **Microcontroller**      | **FPGA**                    | **ASIC**                  | **LED driver IC**             |
+|:--------------------|:-------------------------|:----------------------------|:--------------------------|:------------------------------|
+| How it works        | software on a processor  | configurable hardware       | fixed custom hardware     | fixed function for LEDs       |
+| Parallel tasks      | limited                  | yes                         | yes                       | only its built-in function    |
+| Timing              | depends on the software  | exact, clock-based          | exact                     | exact                         |
+| Change after design | new software             | new bitstream               | not possible              | not possible                  |
+| Development cost    | low                      | medium                      | very high                 | low                           |
+| Unit cost           | low                      | medium                      | low only at high volume   | low                           |
+
+: General comparison of device types for a LED node {#tbl-device-comparison}
+
+An FPGA sits between a microcontroller and an ASIC. It has the exact timing and the
+parallel operation of hardware, and it can still be changed after the design is
+finished. Compared with an ASIC, an FPGA needs more chip area and power for the same
+function, because of its programmable structure [@kuon2008]. A common path is therefore to
+develop and test a design on an FPGA first and to move it to an ASIC later, when the
+number of units is high enough to pay for the ASIC development. The Verilog code in this
+thesis is written with this later step in mind (@sec-rtl).
+
+### Cologne Chip GateMate FPGA {#sec-gatemate}
+
+This thesis uses the **GateMate CCGM1A1** from Cologne Chip. The chip is produced by
+GlobalFoundries in Dresden, Germany, in a 28 nm process called 28SLP [@eenews_gatemate].
+@tbl-gatemate lists its main resources.
+
+| **Resource**                     | **CCGM1A1**                                           |
+|:---------------------------------|:------------------------------------------------------|
+| Programmable elements (CPEs)     | 20,480                                                |
+| Flip-flops / latches             | 40,960                                                |
+| Block RAM                        | 64 blocks of 20 Kbit or 32 blocks of 40 Kbit          |
+| PLLs                             | 4                                                     |
+| SerDes                           | 1                                                     |
+| GPIOs                            | 162 single-ended or 81 differential (LVDS) pairs      |
+| Package                          | 324-ball BGA, 15 × 15 mm                              |
+
+: Main resources of the GateMate CCGM1A1 [@gatemate_summary] {#tbl-gatemate}
+
+The logic block of the GateMate is called *Cologne Programmable Element* (CPE). The CCGM1A1
+has 20,480 CPEs, arranged in a matrix of 160 × 128 [@cologne_ds1001]. Each CPE contains a
+LUT tree that can be used as two 4-input functions or as one 8-input function, and it can
+also work as a 1-bit or 2-bit full adder or as a 2 × 2-bit multiplier. Each CPE has two
+outputs, and each output can use its own flip-flop or latch, so the chip has
+2 × 20,480 = 40,960 flip-flops or latches [@cologne_ds1001]. The place-and-route tool
+nextpnr therefore counts the logic and the flip-flops in half-CPE units, with 40,960
+places each (@sec-hw-results).
+
+The core of the chip runs at 0.9 V, 1.0 V or 1.1 V, depending on whether a low-power, an
+economy or a speed mode is chosen. The GPIOs work with voltage levels from 1.2 V to 2.5 V
+[@cologne_ds1001]. The chip is therefore **not specified for 3.3 V signals**, which has
+to be considered when it is connected to other parts such as a USB-to-serial adapter or
+an LED driver (@sec-gatemate-board).
+
+Cologne Chip supports the GateMate with an open-source toolchain: Yosys for synthesis,
+nextpnr for place and route, and openFPGALoader for programming [@cologne_toolchain].
+@sec-toolchain describes these tools.
+
+### GateMate Evaluation Board and Programmer {#sec-gatemate-board}
+
+The hardware tests in this thesis were done on the **GateMate FPGA Evaluation Board**,
+versions 3.1 and 3.2 [@gatemate_ds1003]. The board carries the CCGM1A1 and gives access to
+108 GPIOs on six 46-pin headers. A 10 MHz oscillator on the board feeds the pin IO_SB_A8,
+which is the input for clock 0 of the FPGA. Inside the FPGA, a PLL turns this 10 MHz clock
+into the 50 MHz system clock of the design (@sec-clock-reset). Eight user LEDs, D1 to D8,
+are connected to GPIO bank EB. The board has its own USB interface (FTDI FT2232H) for
+programming over JTAG, so the separate GateMate programmer board was not needed
+[@gatemate_ds1003].
+
+The two Pmod connectors of the board are connected to GPIO bank NB through SN74CB3T3245
+bus switches with level shifting. Their supply is set to 3.3 V with a jumper to meet the
+Pmod specification [@gatemate_ds1003]. The FPGA itself works with I/O levels of at most
+2.5 V [@cologne_ds1001], so the outputs on the Pmod pins reach only about 2.5 V. This
+level matters for two reasons: the receiving device must accept it as a logic high, and
+the driver stage of the LEDs must switch at this voltage (@sec-low-side-switching).
+
+<!-- TODO figure: own photo of the evaluation board with the used headers marked -->
+
+## Digital Design Flow {#sec-design-flow}
+
+The way from a design idea to a programmed FPGA has several steps (@fig-design-flow).
+They are explained in the following sections.
+
+![Design flow from the model to the programmed FPGA.](images/ch2_design_flow){#fig-design-flow width=100%}
+
+
+### HDL and RTL Design with Verilog {#sec-verilog}
+
+Digital hardware is described with a *hardware description language* (HDL). This thesis
+uses **Verilog**, which is standardised as IEEE 1364 [@ieee1364]. A Verilog description
+consists of *modules* with inputs and outputs, and modules can be connected to build
+larger designs.
+
+The design is written at the *register-transfer level* (RTL). At this level, the designer
+describes the registers (flip-flops) of the circuit and the logic that computes their next
+values at each clock edge. Only a part of the Verilog language can be turned into
+hardware; this part is called *synthesizable*. Other constructs, such as delays
+(`#10`) or file access, are only used in testbenches.
+
+A design that should later be moved to an ASIC follows a few simple rules: one clock for
+the whole design, no device-specific blocks inside the main logic, and clear borders
+between modules. Device-specific parts, such as the PLL and the I/O pins, are kept at the
+top level of the design (@sec-rtl).
+
+### Simulation and Testbenches {#sec-simulation}
+
+Before a design is loaded onto the FPGA, it is tested in simulation. A *testbench* is a
+Verilog module that is not turned into hardware. It creates the input signals, for
+example a serial data stream, applies them to the design and checks the outputs. The
+results can be printed as text, such as "pass" or "fail", or shown as waveforms. In
+simulation, every signal inside the design can be observed, so errors found there are
+much easier to locate than errors found on the hardware. In this thesis, the testbench checks the results itself and prints PASS or FAIL
+(@sec-rtl-verification).
+The simulator used in this thesis is the open-source tool *Icarus Verilog*
+[@icarus_verilog]. No waveform viewer was needed, because the testbench compares all
+results itself and prints them as text.
+
+### Open-Source Toolchain: Yosys, nextpnr, openFPGALoader {#sec-toolchain}
+
+The implementation of the design on the GateMate uses three open-source tools
+[@cologne_toolchain]:
+
+1. *Synthesis with Yosys.* Yosys reads the Verilog code and turns it into a netlist of
+   the basic elements of the target FPGA [@shah2019]. For the GateMate, the command
+   `synth_gatemate` maps the design onto CPEs, flip-flops and other GateMate elements.
+2. *Place and route with nextpnr.* nextpnr places each element of the netlist on a
+   position on the chip and connects the elements through the routing network
+   [@shah2019]. It also performs a timing analysis and reports $f_\text{max}$ and the
+   resource usage.
+3. *Programming with openFPGALoader.* openFPGALoader loads the bitstream into the FPGA or
+   into its configuration flash memory [@openfpgaloader].
+
+Between place and route and programming, the result is packed into a bitstream file. The
+commands used in this thesis are given in @sec-hardware. In Yosys and nextpnr, the
+general algorithms are kept apart from the details of each FPGA architecture, so the same
+tools can support FPGAs from different vendors [@shah2019].
+
+### Model-Based Design with Simulink {#sec-simulink-basics}
+
+**Simulink** is a graphical environment from MathWorks for modelling and simulating
+dynamic systems [@mathworks_simulink]. A model is built from blocks, such as counters,
+switches, comparators and memories, which are connected by signal lines. In this thesis,
+Simulink is used to model the digital data path before the Verilog code is written. In
+this way, the idea of the data path (serial input, latch, parsing and PWM generation) can
+be checked at an early stage (@sec-simulink).
+
+## Serial Communication {#sec-serial-communication}
+
+### UART Frame and Sampling {#sec-uart}
+
+A **universal asynchronous receiver-transmitter (UART)** sends data one bit after another
+over a single wire. There is no separate clock line. Instead, the sender and the receiver
+must be set to the same *baud rate*, the number of bits per second [@adi_uart2020].
+
+When no data is sent, the line stays at a high level. Each data word, called a *frame*,
+consists of [@adi_uart2020]:
+
+1. one *start bit*, which pulls the line low and marks the beginning of the frame,
+2. the *data bits*,
+3. optionally a *parity bit*,
+4. one or two *stop bits*, which bring the line back to high.
+
+The data frame can be 5 to 8 bits long when a parity bit is used, and 9 bits long when no
+parity bit is used [@adi_uart2020].
+
+@fig-uart-frame shows such a frame with nine data bits, as used by Flexlink.
+
+![UART frame of the 9-bit word 0x176 (EOP) at 1 MBaud, with the sampling point in the middle of each bit.](images/ch2_uart_frame){#fig-uart-frame width=100%}
+
+The duration of one bit is:
+
+$$
+T_\text{bit} = \frac{1}{\text{baud rate}}
+$$ {#eq-bit-time}
+
+At 1 MBaud, $T_\text{bit} = 1 / 1{,}000{,}000\ \text{s} = 1\ \mu\text{s}$. A frame with 1
+start bit, 9 data bits and 1 stop bit has 11 bits and therefore lasts $11\ \mu\text{s}$.
+
+Because there is no clock line, the receiver detects the falling edge of the start bit
+and then reads each bit in the middle of its bit time, where the signal is most stable.
+In an FPGA, this is done with a counter that runs at the system clock. The number of
+clock cycles per bit is:
+
+$$
+\text{CLKS\_PER\_BIT} = \frac{f_\text{clk}}{\text{baud rate}}
+$$ {#eq-clks-per-bit}
+
+With $50\ \text{MHz} / 1\ \text{MBaud} = 50$ clock cycles per bit, the receiver waits 25
+clock cycles after the start edge to reach the middle of the start bit, and then 50 clock
+cycles for each further bit.
+
+The sender and the receiver each use their own clock, and the two clocks are never
+exactly equal. The small difference adds up over the frame. The frame is still read
+correctly as long as the last sample, in the middle of the stop bit, stays inside the
+stop bit. For a frame of 11 bits:
+
+1. The middle of the stop bit lies $10.5$ bit times after the start edge.
+2. The sample may move by at most half a bit time, $0.5\ T_\text{bit}$, before it leaves
+   the stop bit.
+3. Allowed total clock difference: $0.5 / 10.5 \approx 4.8\ \%$.
+4. If both sides share this equally, each clock may differ by about $\pm 2.4\ \%$.
+
+This estimate does not include the uncertainty of the start-edge detection, which is one
+clock cycle, or $1/50$ of a bit at 50 MHz and 1 MBaud.
+
+### 9-bit UART Words {#sec-9bit-uart}
+
+Most UART connections send 8 data bits, but 9 data bits are also possible
+[@adi_uart2020]. A common use of the ninth bit is to mark a word as an *address* or
+*control* word instead of a normal data byte. Microcontrollers offer this as a
+*multi-processor communication mode*: all receivers on the line check the ninth bit and
+react only to words in which it is set [@atmega328p].
+
+The Flexlink protocol uses the ninth bit in the same way: it marks the control words that
+start and end a packet (@sec-flexlink). A standard PC serial interface does not offer 9
+data bits directly. The parity bit can be used as the ninth bit instead: with *mark*
+parity the parity bit is always 1, and with *space* parity it is always 0. The Python
+library pySerial supports both settings [@pyserial]. This method is used by the PC test
+program in this thesis (@sec-hardware).
+
+### Packet Structure and Error Detection {#sec-packets}
+
+Single words are grouped into *packets*. A packet usually has:
+
+- a start marker, so that the receiver knows where the packet begins,
+- a command, which says what the packet means,
+- the payload, which is the actual data,
+- optionally a check value for error detection,
+- an end marker.
+
+With a start and an end marker, the receiver can find the borders of a packet again even
+after a transmission error. A simple check value is a *checksum*: the sender adds all
+data bytes, keeps the lowest 8 bits and sends this value with the packet. The receiver
+calculates the same sum and compares it with the received value. A single wrong bit
+changes the sum, so the error is detected. A checksum is easy to build in hardware, but
+it does not detect every combination of errors, for example two errors that cancel each
+other out. *Cyclic redundancy checks* (CRC) detect more errors but need more logic.
+
+
+### Network Topologies {#sec-topologies}
+
+When many nodes have to receive data from one master, they can be connected in different
+ways. @tbl-topologies compares the three basic topologies.
+
+| **Topology**  | **Wiring**                                      | **Delay**                              | **If one node or wire fails**                |
+|:--------------|:------------------------------------------------|:---------------------------------------|:---------------------------------------------|
+| Bus           | one shared line to all nodes                    | the same for all nodes                 | a short circuit can block the whole bus      |
+| Star          | one line from the master to each node           | the same for all nodes                 | only that node is lost                       |
+| Daisy chain   | each node connects only to its neighbours       | grows with the position in the chain   | all nodes behind the failure are lost        |
+
+: Comparison of network topologies {#tbl-topologies}
+
+In an aircraft cabin, the LEDs are mounted one after another along the cabin. A *daisy
+chain* fits this layout, because each segment only needs a short connection to the next
+one, and no long lines back to the master are needed. Each node also sends the signal on
+with fresh, clean edges. The drawbacks are the growing delay and the fact that a broken
+node or wire cuts off all nodes behind it. The delay is treated in the next section.
+
+### Latency in a Daisy Chain {#sec-daisy-latency}
+
+In a daisy chain, every node has to pass on the data for the nodes behind it. There are
+two basic ways to do this:
+
+- *Store-and-forward*: the node first receives the complete packet and only then sends
+  it on.
+- *Cut-through*: the node starts to send the data on as soon as it has received enough
+  of it, without waiting for the end of the packet. Kermani and Kleinrock described this
+  method as *virtual cut-through* for computer networks [@kermani1979].
+
+The delay per node is very different for the two methods:
+
+$$
+t_\text{node,SF} = N_\text{words} \cdot T_\text{word}
+\qquad
+t_\text{node,CT} \approx T_\text{word}
+$$ {#eq-node-delay}
+
+where $N_\text{words}$ is the number of words in the packet and $T_\text{word}$ is the time
+for one word. With cut-through, a node can only forward a UART word after it has received
+it, which takes about one word time. The exact value for this design is derived in
+@sec-rtl.
+
+The total delay up to the last node of a chain with $H$ hops is:
+
+$$
+t_\text{total} = t_\text{packet} + H \cdot t_\text{node}
+$$ {#eq-total-delay}
+
+The following example shows the size of the effect. It uses a packet of 202 words, an
+11-bit word at 1 MBaud ($T_\text{word} = 11\ \mu\text{s}$) and 24 hops:
+
+1. Store-and-forward, per node: $202 \cdot 11\ \mu\text{s} = 2222\ \mu\text{s}$.
+2. Store-and-forward, 24 hops: $24 \cdot 2222\ \mu\text{s} \approx 53.3\ \text{ms}$.
+3. Cut-through, 24 hops: $24 \cdot 11\ \mu\text{s} = 264\ \mu\text{s}$.
+
+With store-and-forward, the hops alone would take more than 50 ms. With cut-through, they
+take about a quarter of a millisecond. The packet size and the time limit of this system
+are analysed in @sec-requirements.
+
+This simple example assumes that every node forwards the complete packet. In the design
+of this thesis, each node keeps its own eight bytes, so the packet becomes shorter from
+node to node. Even then, store-and-forward needs about 29 ms for 25 segments, while
+cut-through needs about 2.5 ms (@sec-req-timing).
+
+## The Flexlink Protocol {#sec-flexlink}
+
+**Flexlink** is the serial protocol that AES uses between the master and the led
+segments [@aes_flexlink]. It is based on UART words with 9 data bits at 1 MBaud. A ninth bit of 1 marks a *control word*,
+and a ninth bit of 0 marks a *data word*. Each packet starts with a control word that
+contains the command, the *start of packet* (SOP). Data words follow, and the packet ends
+with the *end of packet* word EOP = 0x176.
+
+The direction from the master to the segments is called the **uplink**, and the direction
+from the segments back to the master is called the **downlink**. @tbl-flexlink-packets
+lists the packet types used in this thesis.
+
+| **Packet**      | **Direction** | **Words**                                                  |
+|:----------------|:--------------|:-----------------------------------------------------------|
+| LED data        | uplink        | 0x100, then 8 data bytes per node (R, G, B, W, 16 bit each, high byte first), then 0x176 |
+| LED answer      | downlink      | 0x180, node ID, temperature, 0x176                         |
+| Count segments  | uplink        | 0x160, start ID, 0x176                                     |
+| Count answer    | downlink      | 0x1B0, node ID, 0x176                                      |
+
+: Flexlink packets used in this thesis [@aes_flexlink] {#tbl-flexlink-packets}
+
+All command words in @tbl-flexlink-packets, including the end-of-packet word 0x176, are
+defined in the Flexlink specification of AES [@aes_flexlink]. This thesis uses them
+without changes.
+
+## State of the Art {#sec-state-of-the-art}
+
+In a lighting system with many RGBW segments, every segment needs two functions. It must
+**receive** its brightness values over a communication line, and it must **turn these values into PWM signals** for its LEDs. This section describes how these two functions are solved today and which gap this thesis addresses.
+
+### Microcontroller in Every Segment {#sec-sota-mcu}
+
+In the present AES system, every RGBW segment has 8 LEDs in series per colour channel, so
+four PWM signals control the light of one segment. The PWM signals are generated by an
+**STM32C011F6 microcontroller** in each segment, an Arm Cortex-M0+ processor with up to
+48 MHz, two USART interfaces and several 16-bit timers [@st_stm32c011]. One USART
+receives the commands from the master and the other passes them on to the next segment,
+and the answers of the segments travel back the same way.
+
+Each PWM signal switches an LED driver that sets the current of its channel. AES uses two
+types. The BCR421UFD from Diodes is a constant-current regulator for LED strings, whose
+current can be set up to 350 mA with an external resistor and whose enable pin accepts a
+PWM signal of up to 25 kHz [@diodes_bcr421]. The second type is a transistor circuit
+built around the BC846AQB-Q from Nexperia [@nexperia_bc846], in which a Zener diode at
+the base and a resistor at the emitter keep the current constant.
+
+This solution is flexible, because the communication is defined in software. Its limits
+come from the way a microcontroller works. The program handles the received bytes one
+after another, usually started by an interrupt, so the delay of each segment depends on
+the software and on what else the processor is doing at that moment
+(@sec-device-comparison). For a later integrated circuit, the software would also have to
+be rewritten as hardware.
+
+### Addressable LEDs {#sec-sota-addressable}
+
+Addressable LEDs such as the WS2812B show a different way. The control logic and the
+LEDs are combined in one small package, and the packages are connected in a chain by a
+single data line at 800 kbit/s [@ws2812b]. Each LED takes the first 24 bits of the data
+stream, 8 bits for each of the colours green, red and blue, and passes the rest on to the
+next LED after reshaping the signal. A pause of more than 50 µs ends the frame
+[@ws2812b].
+
+This is the same principle as in a Flexlink chain, *keep your own data and forward the
+rest*, but done completely in hardware. The WS2812B shows that this principle needs very
+little logic and very little wiring. However, it offers only 8 bits per colour, no white
+channel, no answer back to the controller and a fixed protocol that cannot be changed.
+
+### FPGA-Based LED Control {#sec-sota-fpga}
+
+FPGAs are already used to control LEDs, for example to generate PWM signals and to
+receive serial commands in an LED dimmer [@avotins2012]. An FPGA works in parallel and is
+clocked, so it can generate many PWM channels with exact timing at the same time, and it
+can forward serial data with a fixed delay of only a few clock cycles. The method of
+forwarding data before the whole packet has arrived, *cut-through*, was first described
+for computer networks [@kermani1979]. With the open-source flow of Yosys and nextpnr,
+such designs can now also be built for commercial FPGAs without vendor tools
+[@shah2019].
+
+### Comparison and Research Gap {#sec-research-gap}
+
+@tbl-state-of-the-art compares the three approaches.
+
+| **Property**                  | **Microcontroller (present AES system)** | **Addressable LED (WS2812B)** | **FPGA node (this thesis)** |
+|:------------------------------|:-----------------------------------------|:------------------------------|:----------------------------|
+| PWM resolution                | depends on the software and timers       | 8 bit                         | 16 bit                      |
+| Forwarding                    | in software                              | in hardware                   | in hardware, cut-through    |
+| Delay per segment             | depends on the software                  | fixed                         | fixed, about one word time  |
+| Answer to the master          | yes                                      | no                            | yes                         |
+| Protocol can be changed       | yes                                      | no                            | yes                         |
+| Path to an integrated circuit | software must be rewritten               | —                             | RTL can be reused           |
+
+: Comparison of approaches for controlling RGBW segments {#tbl-state-of-the-art}
+
+The microcontroller supports Flexlink and answers to the master, but its timing depends on
+the software. The addressable LED forwards in hardware with a fixed delay, but its
+resolution and missing feedback do not meet the needs of a cabin lighting system. In the
+sources reviewed for this thesis, no design was found that implements a Flexlink-type
+daisy-chain protocol with 16-bit PWM, cut-through forwarding and answers to the master
+as **one digital hardware block**, on a European FPGA with an open-source flow, and in a
+form that can later be moved to an integrated circuit. This thesis closes this gap with
+the Flexlink node described in @sec-rtl. The LED drivers that set the current of each
+channel are not part of this replacement and stay as they are.
