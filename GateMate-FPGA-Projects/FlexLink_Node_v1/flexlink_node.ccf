@@ -8,7 +8,7 @@
 #   PmodA pin 7..10 = SEG1..SEG4 (red, green, blue, white)
 #
 #   up_rx has PULLUP   -> open line rests HIGH (idle)
-#   dn_rx has PULLDOWN -> nothing connected = LOW = "I am the last GM"
+#   dn_rx has PULLUP   -> open line rests HIGH (idle), no data from a missing next GM
 # ---------------------------------------------------------------------------
 
 # 10 MHz on-board oscillator -> PLL

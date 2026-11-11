@@ -7,9 +7,9 @@
 //   solo :  one more GM on the same PC Tx, its pin4 = 0 -> it is last, total must be 1
 //
 //   Tests:
-//     1) LED before count      -> answers with ID 0
-//     2) count segments        -> PC gets 1B0 001 176, GM1 id 1, GM2 id 2, solo gets 1B0 000 176
-//     3) LED frame             -> LED pins right, answers 180 001 028 176 180 002 028 176
+//     1) LED before count      -> answers with ID FF (not counted yet)            // [NEW]
+//     2) count segments        -> PC gets 1B0 000 176 1B0 001 176, GM1 id 0, GM2 id 1  // [NEW]
+//     3) LED frame             -> LED pins right, answers 180 000 028 176 180 001 028 176 // [NEW]
 //     4) short LED frame       -> GM1 updates + answers, GM2 keeps old + no answer
 //     5) other command (170)   -> nothing changes, no answer
 //   Prints PASS or FAIL.
@@ -29,7 +29,8 @@ module tb_flexlink_node;
     flexlink_node solo (.clk(clk), .up_rx(pc_tx), .up_tx(solo_up), .dn_rx(1'b0),  .dn_tx(solo_rx),
                         .leds_n(led_s_n), .seg1(rs), .seg2(gs), .seg3(bs), .seg4(ws));
 
-    localparam BIT = 8680;                       // 1 / 115200 = 8.68 us
+    // localparam BIT = 8680;                    // 1 / 115200 = 8.68 us   (old)
+    localparam BIT = 1000;                       // [NEW] 1 / 1 MBaud = 1 us
     integer i, n, k, errors = 0;
     integer c [0:7];
 
@@ -52,8 +53,10 @@ module tb_flexlink_node;
 
     // ---- PC Rx: collect what comes back on GM1 pin2 (and solo pin2) ----
     wire [8:0] pc_word, solo_word;  wire pc_valid, solo_valid;
-    uart_rx9 pc_receiver   (.clk(clk), .rx(pc_rx),   .data(pc_word),   .valid(pc_valid));
-    uart_rx9 solo_receiver (.clk(clk), .rx(solo_rx), .data(solo_word), .valid(solo_valid));
+    // uart_rx9 pc_receiver   (.clk(clk), .rx(pc_rx),   .data(pc_word),   .valid(pc_valid));     (old)
+    // uart_rx9 solo_receiver (.clk(clk), .rx(solo_rx), .data(solo_word), .valid(solo_valid)); (old)
+    uart_rx9 #(.CLKS_PER_BIT(50)) pc_receiver   (.clk(clk), .rx(pc_rx),   .data(pc_word),   .valid(pc_valid));   // [NEW]
+    uart_rx9 #(.CLKS_PER_BIT(50)) solo_receiver (.clk(clk), .rx(solo_rx), .data(solo_word), .valid(solo_valid)); // [NEW]
 
     reg [8:0] got [0:63];  integer n_got = 0, n_seen = 0;
     reg [8:0] sgot[0:63];  integer s_got = 0;
@@ -109,28 +112,32 @@ module tb_flexlink_node;
     initial begin
         #500000;                                 // GM2 + solo find out they are last
 
-        $display("Test 1: LED before count -> answers with ID 0");
+        $display("Test 1: LED before count -> answers with ID FF");   // [NEW]
         frame(1000, 2000, 3000, 4000,      5000, 6000, 7000, 8000);
-        set_exp8(9'h180, 9'h000, 9'h028, 9'h176, 9'h180, 9'h000, 9'h028, 9'h176);
+        // set_exp8(9'h180, 9'h000, 9'h028, 9'h176, 9'h180, 9'h000, 9'h028, 9'h176);   (old)
+        set_exp8(9'h180, 9'h0FF, 9'h028, 9'h176, 9'h180, 9'h0FF, 9'h028, 9'h176);      // [NEW]
         check_dn(8);
 
         $display("Test 2: count segments 160 000 176");
         send9(9'h160); send9(9'h000); send9(9'h176); #1000000;
-        exp[0]=9'h1B0; exp[1]=9'h001; exp[2]=9'h176;
-        check_dn(3);
-        $display("  GM1 my_id=%0d  GM2 my_id=%0d  is_last: GM1=%0d GM2=%0d",
-                 gm1.my_id, gm2.my_id, gm1.is_last, gm2.is_last);
-        if (gm1.my_id != 1 || gm2.my_id != 2) begin errors = errors + 1; $display("  <-- WRONG id"); end
-        $display("  solo GM last answer: %h %h %h   (expected 1b0 001 176)",
+        // exp[0]=9'h1B0; exp[1]=9'h001; exp[2]=9'h176;   (old)
+        // check_dn(3);                                     (old)
+        set_exp8(9'h1B0, 9'h000, 9'h176, 9'h1B0, 9'h001, 9'h176, 0, 0);   // [NEW] every GM answers
+        check_dn(6);                                                       // [NEW]
+        $display("  GM1 my_id=%0d  GM2 my_id=%0d", gm1.my_id, gm2.my_id);  // [NEW]
+        // if (gm1.my_id != 1 || gm2.my_id != 2) ...   (old)
+        if (gm1.my_id != 0 || gm2.my_id != 1) begin errors = errors + 1; $display("  <-- WRONG id"); end  // [NEW]
+        $display("  solo GM last answer: %h %h %h   (expected 1b0 000 176)",   // [NEW]
                  sgot[s_got-3], sgot[s_got-2], sgot[s_got-1]);
-        if (sgot[s_got-3] !== 9'h1B0 || sgot[s_got-2] !== 9'h001 || sgot[s_got-1] !== 9'h176) begin
+        if (sgot[s_got-3] !== 9'h1B0 || sgot[s_got-2] !== 9'h000 || sgot[s_got-1] !== 9'h176) begin  // [NEW]
             errors = errors + 1; $display("  <-- WRONG solo total");
         end
         $display("  D5..D8: GM1 leds_n[7:4]=%b  GM2 leds_n[7:4]=%b  (0 = on)", led1_n[7:4], led2_n[7:4]);
 
         $display("Test 3: LED frame, GM1 = hot pink, GM2 = blue + some white");
         frame(65025, 11025, 32400, 0,      0, 0, 65535, 10000);
-        set_exp8(9'h180, 9'h001, 9'h028, 9'h176, 9'h180, 9'h002, 9'h028, 9'h176);
+        // set_exp8(9'h180, 9'h001, 9'h028, 9'h176, 9'h180, 9'h002, 9'h028, 9'h176);   (old)
+        set_exp8(9'h180, 9'h000, 9'h028, 9'h176, 9'h180, 9'h001, 9'h028, 9'h176);      // [NEW]
         check_dn(8);
         check(65025, 11025, 32400, 0,      0, 0, 65535, 10000);
 
@@ -139,14 +146,16 @@ module tb_flexlink_node;
         send16(500); send16(600); send16(700); send16(800);
         send16(9999); send16(9999);
         send9(9'h176); #1000000;
-        set_exp8(9'h180, 9'h001, 9'h028, 9'h176, 0, 0, 0, 0);
+        // set_exp8(9'h180, 9'h001, 9'h028, 9'h176, 0, 0, 0, 0);   (old)
+        set_exp8(9'h180, 9'h000, 9'h028, 9'h176, 0, 0, 0, 0);      // [NEW]
         check_dn(4);
         check(500, 600, 700, 800,          0, 0, 65535, 10000);
 
         $display("Test 5: other command 170 -> nothing changes, no answer");
         send9(9'h170); send9(9'h000); send9(9'h176); #1000000;
         check_dn(0);
-        if (gm1.my_id != 1 || gm2.my_id != 2) begin errors = errors + 1; $display("  <-- WRONG id changed"); end
+        // if (gm1.my_id != 1 || gm2.my_id != 2) ...   (old)
+        if (gm1.my_id != 0 || gm2.my_id != 1) begin errors = errors + 1; $display("  <-- WRONG id changed"); end  // [NEW]
 
         if (errors == 0) $display("PASS"); else $display("FAIL  (%0d errors)", errors);
         $finish;
