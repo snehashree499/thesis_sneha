@@ -1,0 +1,11 @@
+% header.tex - extra LaTeX settings for the PDF
+
+% Long code lines wrap instead of running off the page
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+
+% Pages may end at different heights, so the gaps between paragraphs are not stretched
+\raggedbottom
+
+% The title page comes from titlepage.tex, so the default title of Quarto is switched off
+\renewcommand{\maketitle}{}

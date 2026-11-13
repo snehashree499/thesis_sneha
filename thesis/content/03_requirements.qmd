@@ -11,41 +11,49 @@ The requirements of this thesis come from three documents of AES and from meetin
 3. **Flexlink specification.** It defines the serial protocol between the master and the
    segments, including the frame format and the commands [@aes_flexlink].
 
-In this thesis, the **Bronze-level requirements are the mandatory baseline**. Silver and Gold features are not implemented and are only mentioned as possible extensions.
+In this thesis, the **Bronze-level requirements are the mandatory baseline**. The Silver and Gold levels were not a target of the work. Some of their requirements concern the digital part, however, and the design also fulfils a few of them, for example a PWM frequency above 600 Hz and answers that are passed back through the chain to the master. These requirements are therefore also listed in @tbl-requirements, with the level of each requirement in the column *Level*.
 
 Two points are important for reading the requirements correctly. First, the requirements describe the **whole system**, which is the IC or FPGA together with the driver stage, the LEDs and the power supply. They do not describe the FPGA alone. For this reason, not every requirement can be met by a digital design on an FPGA, and for each requirement this chapter states whether it is inside or outside the scope of the thesis. Second, the analog parts of the concept, such as the DC-DC converter and the current setting per channel, were placed in a separate "black box" that is not part of this thesis.
 
 ## Requirement List {#sec-req-list}
 
-@tbl-requirements lists all requirements. Each requirement has an ID (R1, R2, …) so that the later chapters can refer to it. The column *Type* shows whether a requirement describes a function (F), a performance value (P), an interface (I) or a design rule (D). The column *Check* shows how the requirement is verified, by test on the hardware (T), by simulation (S) or by analysis (A).
+@@tbl-requirements lists all requirements. Each requirement has an ID (R1, R2, …) so that the later chapters can refer to it. The column *Level* shows the level in the wish list (B = Bronze, S = Silver, G = Gold), and a dash marks requirements from the other AES documents. The column *Type* shows whether a requirement describes a function (F), a performance value (P), an interface (I) or a design rule (D). The column *Check* shows how the requirement is verified, by test on the hardware (T), by simulation (S) or by analysis (A).
 
-|**ID**| **Requirement**                       | **Target value**                 | **Type** | **Source**              | **Scope**   | **Check** | **Checked in**        |
-|:-----|:--------------------------------------|:---------------------------------|:---------|:------------------------|:------------|:----------|:----------------------|
-| R1   | Number of LED channels                | at least 4 (R, G, B, W)          | F        | [@aes_wishlist]         | in          | T         | @sec-hw-pwm           |
-| R2   | Dimming resolution per channel        | 16 bit                           | P        | [@aes_wishlist]         | in          | T, S      | @sec-hw-pwm           |
-| R3   | Brightness control                    | low-side PWM                     | F        | [@aes_wishlist]         | in          | T         | @sec-hw-driver        |
-| R4   | PWM frequency                         | > 400 Hz                         | P        | [@aes_wishlist]         | in          | T         | @sec-hw-pwm           |
-| R5   | Settings stored until changed         | values kept between packets      | F        | [@aes_wishlist]         | in          | T, S      | @sec-hw-communication |
-| R6   | Daisy chain with identical input and output interfaces | same pins and code on every node | I | [@aes_wishlist] | in        | T         | @sec-hw-chain         |
-| R7   | Update time for 25 segments           | 25th segment within 25 ms        | P        | [@aes_wishlist]         | in          | A, T      | @sec-hw-chain         |
-| R8   | Serial protocol                       | Flexlink, 1 MBaud, 9 data bits, SOP/EOP | I | [@aes_flexlink]         | in          | T, S      | @sec-hw-communication |
-| R9   | Feedback to the master                | answer with ID and temperature   | F        | [@aes_flexlink]         | in          | T, S      | @sec-hw-communication |
-| R10  | Configuration from an external controller| synchronous serial data       | I        | [@aes_wishlist]         | changed     | —         | @sec-dec-protocol     |
-| R11  | Independent current per channel       | 2–20 mA | F | [@aes_wishlist]  | out         | —         | @sec-hw-driver        |
-| R12  | Data interface voltage                | 3 V to 5 V                       | I        | [@aes_wishlist]         | partly      | T         | @sec-req-io           |
-| R13  | Supply voltage                        | 18 V to 36 V                     | I        | [@aes_wishlist]         | out         | —         | —                     |
-| R14  | Low-power digital operation           | as low as possible               | P        | [@aes_wishlist]         | partly      | A         | @sec-hw-results       |
-| R15  | RTL suitable for a later ASIC         | synthesizable, few vendor blocks | D        | [@aes_digital_requirements]   | in          | A         | @sec-design-principles|
+|**ID**| **Requirement**                       | **Target value**                 | **Level** | **Type** | **Source**          | **Scope** | **Check** | **Checked in**        |
+|:-----|:--------------------------------------|:---------------------------------|:----------|:---------|:--------------------|:----------|:----------|:----------------------|
+| R1   | Number of LED channels                | at least 4 (R, G, B, W)          | B         | F        | [@aes_wishlist]     | in        | T         | @sec-hw-pwm           |
+| R2   | Dimming resolution per channel        | 16 bit                           | B         | P        | [@aes_wishlist]     | in        | T, S      | @sec-hw-pwm           |
+| R3   | Brightness control                    | low-side PWM                     | B         | F        | [@aes_wishlist]     | in        | T         | @sec-hw-driver        |
+| R4   | PWM frequency                         | > 400 Hz                         | B         | P        | [@aes_wishlist]     | in        | T         | @sec-hw-pwm           |
+| R5   | Setting stored until changed          | kept after power-off, no new programming at power-up | B | F | [@aes_wishlist]   | partly    | T, S      | @sec-hw-robustness    |
+| R6   | Daisy chain with identical input and output interfaces | same pins and code on every node | B | I | [@aes_wishlist] | in      | T         | @sec-hw-chain         |
+| R7   | Update time for 25 segments           | 25th segment within 25 ms        | B         | P        | [@aes_wishlist]     | in        | A, T      | @sec-hw-chain         |
+| R8   | Serial protocol                       | Flexlink, 1 MBaud, 9 data bits, SOP/EOP | —  | I        | [@aes_flexlink]     | in        | T, S      | @sec-hw-communication |
+| R9   | Feedback to the master                | answer with ID and temperature   | —         | F        | [@aes_flexlink]     | in        | T, S      | @sec-hw-communication |
+| R10  | Control by an external microcontroller | custom or existing interface or protocol | B | I       | [@aes_wishlist]     | in        | T, S      | @sec-dec-protocol     |
+| R11  | Independent current per channel       | 2–20 mA, step at most 0.5 mA     | B         | F        | [@aes_wishlist]     | out       | —         | @sec-hw-driver        |
+| R12  | Data interface voltage                | 3 V to 5 V                       | B         | I        | [@aes_wishlist]     | partly    | T         | @sec-req-io           |
+| R13  | Supply voltage                        | 18 V to 36 V                     | B         | I        | [@aes_wishlist]     | out       | —         | —                     |
+| R14  | Low-power digital operation           | as low as possible               | B         | P        | [@aes_wishlist]     | partly    | A         | @sec-hw-results       |
+| R15  | RTL suitable for a later ASIC         | synthesizable, few vendor blocks | —         | D        | [@aes_digital_requirements] | in | A         | @sec-design-principles|
+| R16  | Position of the driver                | in parallel to the LEDs, does not supply their power | B | D | [@aes_wishlist]   | out       | —         | —                     |
+| R17  | PWM frequency                         | > 600 Hz                         | S         | P        | [@aes_wishlist]     | in        | T         | @sec-hw-pwm           |
+| R18  | Answers from the chain to the master  | answers passed through to the front; ID, LED current status, current setting | S | F | [@aes_wishlist] | partly | T, S | @sec-hw-communication |
+| R19  | PWM frequency                         | > 1 kHz                          | G         | P        | [@aes_wishlist]     | in        | T         | @sec-hw-pwm           |
+| R20  | Constant-voltage output for the LEDs  | 28 V (Silver), 5 V to 28 V in steps of at most 0.5 V (Gold) | S, G | I | [@aes_wishlist] | out | — | —                    |
+| R21  | Differential data signal              | similar to RS-485 or LVDS        | G         | I        | [@aes_wishlist]     | out       | —         | @sec-dec-protocol     |
 
 : Requirements of the system and their scope in this thesis {#tbl-requirements}
 
-The requirements are not all equally strict. **R4 and R7 are hard limits.** If the PWM frequency is too low, the light flickers (@sec-pwm-parameters), and if the update takes too long, a passenger sees the light change from one end of the cabin to the other. R2 is also fixed, because the master sends 16-bit values. Other requirements, such as R14, are goals rather than limits.
+The requirements in @tbl-requirements are not all equally strict. **R4 and R7 are hard limits** (@tbl-requirements). If the PWM frequency is too low, the light flickers (@sec-pwm-parameters), and if the update takes too long, a passenger sees the light change from one end of the cabin to the other. R2 (@tbl-requirements) is also fixed, because the master sends 16-bit values. Other requirements, such as R14 (@tbl-requirements), are goals rather than limits.
 
-Three requirements need a short note already here.
+Some requirements of @tbl-requirements need a short explanation at this point.
 
-- **R10 (synchronous serial data).** The wish list asks for a synchronous serial interface, but the Flexlink specification and the present AES system use an asynchronous UART. This thesis follows Flexlink, as agreed with AES. The reason is explained in @sec-dec-protocol.
-- **R11 and R13 (current and supply).** The current per channel and the 18 V to 36 V supply belong to the analog part of the concept, which is outside the scope.
+- **R5 (stored setting).** The wish list asks that a setting is kept until it is changed, so that it does not have to be programmed again at every power-up. The node of this thesis keeps its brightness values between two packets, but not after power-off, because the values are held in flip-flops and the configuration of the FPGA is loaded into its SRAM. R5 is therefore only met in part.
+- **R10 (interface).** The wish list leaves the interface open and asks for control by an external microcontroller with a custom or an existing interface or protocol. This thesis uses Flexlink (@sec-dec-protocol).
+- **R11, R13, R16 and R20 (analog part).** The current per channel, the 18 V to 36 V supply, the position of the driver and the constant-voltage output belong to the analog part of the concept, which is outside the scope.
 - **R12 (interface voltage).** The outputs of the evaluation board reach only about 2.5 V, which is below the range of 3 V to 5 V. This is discussed in @sec-req-io.
+- **R17 to R19 and R21 (Silver and Gold).** The PWM frequency of the design is checked against all three levels. The answers of the nodes (R18) are passed through the chain as the Silver level asks, but they contain the ID and a temperature value as defined by Flexlink, not the LED current status or the current setting. The differential data signal of the Gold level (R21) would replace the data concept of the Bronze level and is not used.
 
 ## Requirement Analysis {#sec-req-analysis}
 
@@ -57,8 +65,8 @@ $$
 f_\text{PWM} = \frac{f_\text{clk}}{2^N}
 $$ {#eq-req-fpwm}
 
-With the resolution $N = 16$ from R2 and the minimum frequency
-$f_\text{PWM} > 400\ \text{Hz}$ from R4, the clock must be faster than:
+With the resolution $N = 16$ from R2 (@tbl-requirements) and the minimum frequency
+$f_\text{PWM} > 400\ \text{Hz}$ from R4 (both in @tbl-requirements), the clock must be faster than:
 
 $$
 f_\text{clk} > 400\ \text{Hz} \cdot 2^{16} = 400\ \text{Hz} \cdot 65{,}536 \approx 26.2\ \text{MHz}
@@ -70,12 +78,12 @@ $$
 f_\text{PWM} = \frac{50\ \text{MHz}}{65{,}536} \approx 762.9\ \text{Hz}
 $$
 
-This is almost twice the required 400 Hz. The value 50 MHz has two more advantages. It gives exactly **50 clock cycles per UART bit** at 1 MBaud, so the bit timing has no rounding error, and it is low enough to leave a safe timing margin in the FPGA (@sec-hw-results). The smallest brightness step is one clock cycle, which is
+This is almost twice the required 400 Hz, and it also meets the Silver level of more than 600 Hz (R17 in @tbl-requirements). The Gold level of more than 1 kHz (R19 in @tbl-requirements) is not reached, because it would need a clock of at least $1\ \text{kHz} \cdot 65{,}536 \approx 65.5\ \text{MHz}$. The value 50 MHz has two more advantages. It gives exactly **50 clock cycles per UART bit** at 1 MBaud, so the bit timing has no rounding error, and it is low enough to leave a safe timing margin in the FPGA (@sec-hw-results). The smallest brightness step is one clock cycle, which is
 $1 / 50\ \text{MHz} = 20\ \text{ns}$ or $1 / 65{,}536 \approx 0.0015\ \%$ of the period.
 
 ### Communication Timing for 25 Segments {#sec-req-timing}
 
-Requirement R7 says that the 25th segment must have its new data within 25 ms after the first segment started to receive. The time depends on three things: the length of the packet, the data rate and the delay in each node.
+Requirement R7 (@tbl-requirements) says that the 25th segment must have its new data within 25 ms after the first segment started to receive. The time depends on three things: the length of the packet, the data rate and the delay in each node.
 
 **Packet length.** Each RGBW segment needs four 16-bit values, which are 8 bytes. A Flexlink LED packet for $N$ segments therefore has one SOP, $8N$ data words and one EOP:
 
@@ -115,17 +123,17 @@ The table leads to two clear results.
 1. **Store-and-forward fails** even at 1 MBaud, with 29.2 ms against the limit of 25 ms.
 2. **Cut-through at 1 MBaud passes with a large margin.** The 25th segment has its data after about 2.47 ms, which is about one tenth of the limit.
 
-Cut-through would pass even at 115.2 kBaud, but with only a small margin of 3.5 ms. At 1 MBaud, which is also the data rate of the Flexlink specification, the margin leaves room for answers on the downlink, for longer packets in later versions (for example with a checksum) and for short gaps between packets. A sweep over the number of segments is shown in @sec-sim-latency.
+Cut-through would pass even at 115.2 kBaud, but with only a small margin of 3.5 ms. At 1 MBaud, which is also the data rate of the Flexlink specification, the margin leaves room for answers on the downlink, for longer packets in later versions (for example with a checksum) and for short gaps between packets.
 
 ### I/O Count {#sec-req-io}
 
 Each node needs **four serial pins**, two for the uplink (`up_rx`, `up_tx`) and two for the downlink (`dn_rx`, `dn_tx`). In the version built in this thesis, each node drives one RGBW segment, which needs **four PWM outputs**. Together with the clock input and the on-board LEDs used for testing, the design uses 18 of the 162 I/O pins of the CCGM1A1 (@sec-hw-results). The full AES concept with four RGBW segments per node would need 16 PWM outputs, which would still fit easily.
 
-The voltage level is a bigger limit than the number of pins. The Pmod connectors of the evaluation board pass the signals through a bus switch, and the outputs reach only about 2.5 V (@sec-gatemate-board). This is below the 3 V to 5 V of R12. For the prototype, this is acceptable, because the USB-TTL adapter read the 2.5 V signals correctly in all tests and the GateMates are connected to each other directly. In a real system, a level shifter would be needed between the FPGA and the 3 V to 5 V data line. This is part of the black box mentioned in @sec-req-sources.
+The voltage level is a bigger limit than the number of pins. The Pmod connectors of the evaluation board pass the signals through a bus switch, and the outputs reach only about 2.5 V (@sec-gatemate-board). This is below the 3 V to 5 V of R12 (@tbl-requirements). For the prototype, this is acceptable, because the USB-TTL adapter read the 2.5 V signals correctly in all tests and the GateMates are connected to each other directly. In a real system, a level shifter would be needed between the FPGA and the 3 V to 5 V data line. This is part of the black box mentioned in @sec-req-sources.
 
 ### Driver Stage {#sec-req-driver}
 
-The low output voltage also affects the driver stage (R3). The outputs of the evaluation board reach only about 2.5 V, which is not enough to drive the LEDs directly, because the blue and the white LED need a forward voltage of about 3 V or more. The prototype therefore uses one **BS170 N-channel MOSFET** per channel as a low-side switch (@sec-low-side-switching), with the LEDs supplied from an external 12 V source. A MOSFET is controlled by its gate voltage and needs no steady gate current, so the FPGA output only has to charge the small gate capacitance of at most 60 pF [@onsemi_bs170]. A gate resistor of 100 Ω limits the charging current, and a pull-down resistor of 10 kΩ keeps the MOSFET off when the pin is not driven. The LED current is set by a series resistor with @eq-series-resistor.
+The low output voltage also affects the driver stage (R3 in @tbl-requirements). The outputs of the evaluation board reach only about 2.5 V, which is not enough to drive the LEDs directly, because the blue and the white LED need a forward voltage of about 3 V or more. The prototype therefore uses one **BS170 N-channel MOSFET** per channel as a low-side switch (@sec-low-side-switching), with the LEDs supplied from an external 12 V source. A MOSFET is controlled by its gate voltage and needs no steady gate current, so the FPGA output only has to charge the small gate capacitance of at most 60 pF [@onsemi_bs170]. A gate resistor of 100 Ω limits the charging current, and a pull-down resistor of 10 kΩ keeps the MOSFET off when the pin is not driven. The LED current is set by a series resistor of 470 Ω between the LED and the drain, sized with @eq-series-resistor. 
 
 The weak point of this choice is the gate voltage. The threshold voltage of the BS170 lies between 0.8 V and 3.0 V, with a typical value of 2.0 V, and the on-resistance is only specified for a gate voltage of 10 V [@onsemi_bs170]. With about 2.5 V at the gate, a typical part is switched on, but this operating point is not guaranteed by the datasheet. This is accepted for the prototype, because the driver stage only replaces the LED drivers of the AES system, which are not part of this thesis. The values used on the breadboard are given in @sec-hw-driver.
 
@@ -135,7 +143,7 @@ Several decisions had to be made before the design could start. This section exp
 
 ### One FPGA per segment or One for the Whole Cabin {#sec-dec-topology}
 
-One option is a single central FPGA that drives all segments of the cabin with separate wires. This needs few chips, but the number of wires grows with every segment, which adds weight and failure points. The other option is a **small FPGA in every segment**, connected in a chain. Here, the wiring stays almost the same when segments are added, because each node only connects to its two neighbours (@sec-topologies). This matches the daisy-chain concept of AES (R6), so **one FPGA per segment, connected in a chain**, was chosen.
+One option is a single central FPGA that drives all segments of the cabin with separate wires. This needs few chips, but the number of wires grows with every segment, which adds weight and failure points. The other option is a **small FPGA in every segment**, connected in a chain. Here, the wiring stays almost the same when segments are added, because each node only connects to its two neighbours (@sec-topologies). This matches the daisy-chain concept of AES (R6 in @tbl-requirements), so **one FPGA per segment, connected in a chain**, was chosen.
 
 <!-- 
 ### LED Driver IC or PWM in the FPGA {#sec-dec-driver-ic}
@@ -147,7 +155,7 @@ Two dedicated LED driver ICs were studied as an alternative, the Diodes AL58263Q
 
 In the present AES system, every segment has an **STM32C011F6 microcontroller**. It receives the Flexlink packet, passes it on to the next segment, sends the answers back and generates the four PWM signals [@st_stm32c011]. Each PWM signal then switches an LED driver that sets the current of its channel, either a BCR421UFD regulator or a transistor circuit with the BC846AQB-Q [@diodes_bcr421; @nexperia_bc846].
 
-The goal of this thesis is to **replace the microcontroller with the GateMate FPGA**. The LED drivers are not part of this change and stay as they are. In the FPGA, receiving, forwarding and PWM generation run in parallel hardware. The forwarding delay is therefore fixed and does not depend on software (@sec-device-comparison). The 16-bit PWM needs only a counter and four comparators (@sec-pwm-generator), and the same Verilog code can later be the starting point for an ASIC (R15). On the prototype board, a simple MOSFET switch with a series resistor takes the place of the LED driver (@sec-req-driver).
+The goal of this thesis is to **replace the microcontroller with the GateMate FPGA**. The LED drivers are not part of this change and stay as they are. In the FPGA, receiving, forwarding and PWM generation run in parallel hardware. The forwarding delay is therefore fixed and does not depend on software (@sec-device-comparison). The 16-bit PWM needs only a counter and four comparators (@sec-pwm-generator), and the same Verilog code can later be the starting point for an ASIC (R15 in @tbl-requirements). On the prototype board, a simple MOSFET switch with a series resistor takes the place of the LED driver (@sec-req-driver).
 
 ### Master for the Prototype {#sec-dec-master}
 
@@ -163,7 +171,7 @@ AES provided the code of its present PIC-to-segment solution. It was studied, bu
 
 ### Asynchronous UART or Synchronous Serial Interface {#sec-dec-protocol}
 
-The wish list asks for a synchronous serial interface (R10), which has a separate clock line. Flexlink, however, uses an asynchronous UART with one data line per direction[@aes_flexlink]. A UART needs fewer wires, and since the present AES system already uses Flexlink, a new node can work with the existing master. **The UART-based Flexlink protocol** was therefore used, as agreed with AES. R10 is thus replaced by R8.
+The wish list leaves the choice of the interface open (R10 in @tbl-requirements). A synchronous serial interface such as SPI would add a separate clock line to every data line. Flexlink, however, The prototyuses an asynchronous UART with one data line per direction and no clock line [@aes_flexlink; @adi_uart2020].pe uses an N-channel *MOSFET* as the switch [@sedra2015] A UART needs fewer wires, and a node that uses Flexlink can work with an existing Flexlink master. **The UART-based Flexlink protocol** was therefore used, as agreed with AES, and it fulfils R10 as a custom protocol. The differential data signal of the Gold level (R21) was not used, because it needs a different physical layer, while the Flexlink lines are single-ended.
 
 | **Decision**          | **Options**                                   | **Chosen**                    | **Main reason**                                          |
 |:----------------------|:----------------------------------------------|:------------------------------|:---------------------------------------------------------|
@@ -176,7 +184,7 @@ The wish list asks for a synchronous serial interface (R10), which has a separat
 | Driver stage          | BJT / N-channel MOSFET                        | BS170 (MOSFET)                | no steady gate current, small gate capacitance           |
 | System clock          | 10 MHz / 50 MHz from the PLL                  | 50 MHz                        | 763 Hz PWM, 50 cycles per bit (R4)                       |
 
-: Summary of the design decisions {#tbl-decisions}
+: Summary of the design decisions from @tbl-requirements {#tbl-decisions}
 
 ## System Architecture {#sec-system-architecture}
 

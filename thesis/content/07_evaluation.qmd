@@ -1,3 +1,118 @@
 # Evaluation and Discussion {#sec-evaluation}
 
-*This chapter is in progress and will follow in the next version.*
+This chapter puts the results of the previous chapters together and compares them with the requirements of @sec-requirements. It first checks each requirement (@sec-eval-requirements) and then compares the results of the calculation, the simulation and the hardware (@sec-eval-comparison). After that, it discusses the timing margin of the chain (@sec-eval-timing), the resource use and the path to an ASIC (@sec-eval-resources), and the difference to the present microcontroller solution of AES (@sec-eval-mcu). The chapter ends with the limitations of the work (@sec-eval-limitations) and a short check of the objectives from @sec-objectives (@sec-eval-objectives).
+
+## Fulfilment of the Requirements {#sec-eval-requirements}
+
+@tbl-eval-requirements lists every requirement of @tbl-requirements together with its level in the wish list (B = Bronze, S = Silver, G = Gold), the result and the place where the result is shown. The column *Status* uses four values. **Met** means that the requirement is fulfilled and shown by a test or by analysis. **Partly** means that only a part of the requirement is fulfilled in the prototype. **Not met** means that the requirement belongs to the digital part but is not reached, and **out of scope** means that the requirement belongs to the analog or electrical part of the concept.
+
+| **ID** | **Level** | **Requirement**                    | **Result in this thesis**                                                            | **Shown in**            | **Status**     |
+|:-------|:----------|:-----------------------------------|:-------------------------------------------------------------------------------------|:------------------------|:---------------|
+| R1     | B         | at least 4 channels (R, G, B, W)   | four PWM outputs `seg1` to `seg4` per node                                           | @sec-hw-pwm             | met            |
+| R2     | B         | 16-bit dimming                     | value 1 gives one pulse of 20.15 ns, the step of one clock cycle                     | @sec-hw-pwm             | met            |
+| R3     | B         | low-side PWM                       | BS170 MOSFET switches the cathode side of each LED                                   | @sec-hw-driver          | met            |
+| R4     | B         | PWM frequency above 400 Hz         | 763.0 Hz measured                                                                    | @sec-hw-pwm             | met            |
+| R5     | B         | setting stored until changed       | values kept between packets (tests C1, C5 in @tbl-robustness), but lost after power-off                 | @sec-hw-robustness      | partly         |
+| R6     | B         | identical interfaces and code      | the same bitstream runs on both nodes, the ID is given by Count Segments             | @sec-hw-chain           | met            |
+| R7     | B         | 25th segment within 25 ms          | 2.48 ms, calculated with the measured delay of 10.69 µs per node                     | @sec-hw-chain           | met            |
+| R8     | —         | Flexlink, 1 MBaud, 9 data bits     | all packets decoded correctly on the oscilloscope                                    | @sec-hw-communication   | met            |
+| R9     | —         | answer with ID and temperature     | answers in the order of the chain, with a fixed temperature value                    | @sec-hw-communication   | partly         |
+| R10    | B         | control by an external controller with a custom or existing protocol | Flexlink, with the PC as master                    | @sec-hw-communication   | met            |
+| R11    | B         | current 2 mA to 20 mA per channel, step at most 0.5 mA | current set by a fixed series resistor, not regulated | @sec-hw-driver          | out of scope   |
+| R12    | B         | data interface 3 V to 5 V          | the evaluation board outputs about 2.5 V                                             | @sec-req-io             | partly         |
+| R13    | B         | supply 18 V to 36 V                | not part of the digital design                                                       | —                       | out of scope   |
+| R14    | B         | low power consumption              | small design (1.9 % of the logic), but the power was not measured                    | @sec-hw-results         | partly         |
+| R15    | —         | RTL suitable for a later ASIC      | plain Verilog, the PLL is the only vendor block                                      | @sec-eval-resources     | met            |
+| R16    | B         | IC in parallel to the LEDs         | not part of the digital design                                                       | —                       | out of scope   |
+| R17    | S         | PWM frequency above 600 Hz         | 763.0 Hz measured                                                                    | @sec-hw-pwm             | met            |
+| R18    | S         | answers passed through the chain to the master | answers of all nodes reach the master in the order of the chain, with the ID; LED current status and current setting are not reported | @sec-hw-communication | partly |
+| R19    | G         | PWM frequency above 1 kHz          | 763.0 Hz measured                                                                    | @sec-hw-pwm             | not met        |
+| R20    | S, G      | constant-voltage output for the LEDs | not part of the digital design                                                     | —                       | out of scope   |
+| R21    | G         | differential data signal (similar to RS-485 or LVDS) | not implemented, single-ended UART lines           | @sec-dec-protocol       | not met        |
+
+: Fulfilment of the requirements of @tbl-requirements {#tbl-eval-requirements}
+
+All Bronze requirements that belong to the digital function of the node are met (@tbl-eval-requirements), with one exception. R5 (@tbl-requirements) asks that a setting is kept after power-off, while the node keeps its values only as long as it is powered. The other requirements with the status *partly* or *out of scope* describe the analog part of the concept or the electrical limits of the evaluation board, and not the digital function of the node. Beyond the Bronze baseline, the design also meets the Silver PWM frequency (R17 in @tbl-requirements) and most of the Silver answer function (R18 in @tbl-requirements). It does not reach the Gold PWM frequency of 1 kHz (R19 in @tbl-requirements), and it does not use a differential data signal (R21 in @tbl-requirements).
+
+## Comparison of Calculation, Simulation and Hardware {#sec-eval-comparison}
+
+The same quantities were determined in up to three ways in this thesis: by calculation in @sec-requirements, by simulation in the Simulink model of @sec-simulink and in the RTL simulation of @sec-rtl-verification, and by measurement in @sec-hardware. @tbl-eval-comparison puts the values side by side.
+
+| **Quantity**                         | **Calculation**                  | **Simulation**                                        | **Measurement**                       |
+|:-------------------------------------|:---------------------------------|:------------------------------------------------------|:--------------------------------------|
+| PWM frequency                        | 762.9 Hz (@eq-req-fpwm)          | 15.26 Hz in the Simulink model (counter step 1 µs)    | 763.0 Hz                              |
+| Smallest PWM step                    | 20 ns (one clock cycle)          | one clock cycle (RTL simulation)                      | 20.15 ns                              |
+| Duty cycle for the value 10,000      | 15.26 %                          | 15.26 % (Simulink, red channel)                       | 200.0 µs of 1.311 ms = 15.26 %        |
+| Duty cycle for the value 20,000      | 30.52 %                          | 30.52 % (Simulink, green channel)                     | 400.0 µs of 1.311 ms = 30.52 %        |
+| Frame split into four values         | —                                | correct in the Simulink model and the RTL simulation  | correct on both nodes                 |
+| Forwarding delay per node            | about 10.5 bit times             | 10.65 µs (RTL simulation)                             | 10.69 µs (mean of 96 words)           |
+| Time for 25 segments                 | 2.47 ms (@eq-req-t-ct)           | —                                                     | 2.48 ms (with the measured delay)     |
+| Answers to Count Segments and LED data | as defined in @sec-downlink    | as expected in all five tests (RTL)                   | as expected                           |
+| Robustness tests                     | —                                | expected answers from the final code (RTL)            | 14 of 14 measured (@tbl-robustness) tests as expected   |
+
+: Comparison of calculated, simulated and measured values {#tbl-eval-comparison}
+
+The values agree well. The measured forwarding delay is 0.04 µs longer than the simulated one. This is less than the sample interval of the oscilloscope of 0.1 µs, so the difference cannot be resolved by the measurement. The analytical value of 10.5 bit times does not include the few clock cycles that the node needs to decode a word and start the transmitter. The simulation includes them, and this is why it gives 10.65 µs instead of 10.5 µs.
+
+Only one difference between simulation and hardware was found. In test B1 (@tbl-robustness) with the count value 0xFF, GM1 forwarded only the SOP on the hardware, while the simulation of the final code also forwards the EOP (@sec-count-rules). The difference most likely comes from an earlier version of the decoder that was loaded on the boards when the captures were recorded on 22 October 2026. In that version, a node forwarded nothing more after receiving the count value 0xFF. This behaviour was removed in the final code. In the earlier version and in the final code, GM2 receives no count value and does not answer, so the result of the test is the same.
+
+The Simulink model and the RTL design describe the same data path at different levels (@tbl-model-vs-impl). The model works with one 64-bit frame, a bit time of 1 ms and a PWM counter step of 1 µs. It therefore checks the order of the values and the duty cycles, but not the timing of the real serial line or the real PWM frequency. Its PWM frequency of 15.26 Hz is 50 times lower than in the hardware, because its counter advances every 1 µs instead of every 20 ns. The RTL design and the hardware use 9-bit words with the least significant bit first and a PWM clock of 50 MHz. For the values 10,000 and 20,000, which were measured on both, the duty cycles agree exactly. This shows that the model was a correct reference for the function of the data path. The forwarding delay in the model is not an independent result, because the measured value of 10.69 µs was used as the input of its Transport Delay block (@sec-sim-chain).
+
+## Timing Margin of the Chain {#sec-eval-timing}
+
+R7 (@tbl-requirements) is met with a large margin. With the measured delay of 10.69 µs per node, the time until the last of $N$ nodes has its data is:
+
+$$
+t(N) = (8N + 2) \cdot 11\ \mu\text{s} + (N - 1) \cdot 10.69\ \mu\text{s}
+$$ {#eq-eval-t-n}
+
+For $N = 25$, this gives 2.48 ms, which is about one tenth of the limit. Solving $t(N) \le 25\ \text{ms}$ for $N$ gives the longest chain that still meets the limit:
+
+$$
+N \le \frac{25{,}000\ \mu\text{s} - 22\ \mu\text{s} + 10.69\ \mu\text{s}}{88\ \mu\text{s} + 10.69\ \mu\text{s}} \approx 253
+$$ {#eq-eval-n-max}
+
+This estimate assumes that the master sends the words of a packet without gaps. The PC used in this thesis does not do this. It leaves gaps of 1 ms to 2.6 ms between the SOP, the data words and the EOP (@sec-hw-pc-program). These gaps come from the PC program and its serial adapter, not from the nodes. A microcontroller with a 9-bit UART can send the words directly one after another, so the calculated values apply to a system with such a master. The answers on the downlink are not part of R7, because they travel on a separate line.
+
+## Resource Use and Path to an ASIC {#sec-eval-resources}
+
+The node uses 1.9 % of the logic and 1.2 % of the flip-flops of the CCGM1A1, one of four PLLs and no block RAM (@tbl-resources). The design is therefore very small for this FPGA. The timing is met at 50 MHz with a slack of about 5.5 ns, and the highest clock frequency that the design reaches is 68.8 MHz.
+
+For R15 (@tbl-requirements), the important point is how much of the design depends on the GateMate. The only vendor-specific block is the PLL `CC_PLL`, which generates the 50 MHz clock from the 10 MHz oscillator. All other parts are written in plain Verilog. The two FIFO buffers of eight words each are built from flip-flops and not from block RAM, and the design uses no vendor macros for counters or memories. For an ASIC, the PLL would be replaced by the clock source of the target technology, and the rest of the RTL could be kept. The design was also built with an open-source flow from the start, so no step of the implementation depends on a commercial tool.
+
+## Comparison with the Present Microcontroller Solution {#sec-eval-mcu}
+
+In the present AES system, an STM32C011F6 microcontroller in each segment receives the Flexlink packets, forwards them, sends the answers and generates the PWM signals (@sec-sota-mcu) [@st_stm32c011]. The Flexlink node of this thesis takes over exactly these functions. The LED drivers of AES stay the same, because they only need a PWM signal at their input.
+
+The main difference lies in the timing. In the FPGA, receiving, forwarding and PWM generation run in parallel hardware. The forwarding delay is fixed by the design and was measured as 10.69 µs, with a spread of only 0.11 µs over 96 words. In a microcontroller, the received bytes are handled by software, so the delay depends on the program and on what else the processor is doing (@sec-device-comparison). The 16-bit PWM of the FPGA runs at 763 Hz with a step of 20 ns, without any load on a processor.
+
+A full comparison with numbers was not possible, because no measurements of the forwarding delay of a microcontroller-based node were available for this thesis. The cost and the power of an FPGA per segment were also not evaluated. For a product, an FPGA in every segment is not the goal. The purpose of the FPGA prototype is to prove the function of the RTL, which can then be moved to an ASIC (R15 in @tbl-requirements).
+
+## Limitations {#sec-eval-limitations}
+
+The results are valid within the limits of the prototype. The most important limitations are listed here.
+
+1. **Two nodes.** The chain was built with two nodes. The behaviour of 25 nodes is calculated from the measured delay per node. Because every node runs the same code and the delay does not depend on the position in the chain, this calculation is expected to hold, but it was not measured.
+2. **PC as master.** The PC sends the words in groups with gaps between them (@sec-hw-pc-program). The nodes handled these gaps without errors, but the case of a master that sends all words back to back was only tested in simulation.
+3. **Fixed temperature and limited answers.** The answer contains a fixed temperature value of 0x28. The answer format is complete, but no sensor is read (R9 in @tbl-requirements). The answers also do not report the LED current status or the current setting that the Silver level lists (R18 in @tbl-requirements), because the current is not regulated in this design.
+4. **Values lost after power-off.** The brightness values are held in flip-flops, and the configuration of the FPGA is loaded into its SRAM. Both are lost when the power is switched off, so R5 (@tbl-requirements) is only met between two packets. A non-volatile memory would be needed to keep the values over a power cycle.
+5. **No checksum.** Broken packets are detected by their structure (@sec-hw-robustness). A packet with the right structure but wrong data is not detected, because Flexlink v1 as used here contains no checksum.
+6. **Electrical limits of the evaluation board.** The outputs reach only about 2.5 V (R12 in @tbl-requirements), and the BS170 is not specified for this gate voltage (@sec-req-driver). Without the driver stage, the PWM high level at `seg1` was 2.1 V. With the driver stage connected, it fell to about 1.3 V. The output therefore has a high internal resistance, most likely in the bus switch between the FPGA and the Pmod connector, and the load of the gate resistor and the pull-down resistor lowers the voltage. A gate voltage of 1.3 V is enough to switch the BS170 parts used here, but it lies below the typical threshold voltage of 2.0 V in the datasheet [@onsemi_bs170], so this operating point is not guaranteed. A level shifter or a driver stage for logic levels would solve this.
+7. **Flicker.** R4 (@tbl-requirements) asks for more than 400 Hz, and the design reaches 763 Hz. A PWM signal that switches the LED fully off has a percent flicker of 100 %. According to IEEE 1789-2015, as explained by Miller and Lehman, 100 % flicker is only acceptable at 1250 Hz or more [@miller_lehman2015]. At 763 Hz, the recommended limit is about 61 % (@sec-pwm-parameters). The design therefore meets the requirements of the Bronze and Silver levels (R4, R17), but not the Gold level of more than 1 kHz (R19) and not the stricter recommendation. A higher PWM frequency would need either a faster PWM clock or a different PWM method. With the 16-bit counter of this design, 1 kHz would need a clock of at least 65.5 MHz and 1250 Hz a clock of about 82 MHz. The first value is only just below the 68.8 MHz that the current design reaches, and the second is above it.
+8. **Tests not carried out.** Some tests of the test plan were not measured on the hardware, for example broken wires and a power reset during a packet. All tests that were measured, including the PWM value 0 and the test with two count values (B3 in @tbl-robustness), gave the expected result.
+
+## Achievement of the Objectives {#sec-eval-objectives}
+
+@sec-objectives defined five specific goals. @tbl-eval-objectives shows how far each goal was reached.
+
+| **Goal**                | **Result**                                                                                      | **Status** |
+|:------------------------|:------------------------------------------------------------------------------------------------|:-----------|
+| 1. Requirements         | requirements collected, scope defined, clock and timing values derived (@sec-requirements)       | reached    |
+| 2. System-level model   | Simulink model of the data path and the LED stage, used as reference (@sec-simulink)             | reached    |
+| 3. RTL design           | synthesizable Flexlink node with cut-through forwarding, Count Segments, ordered answers and 16-bit PWM, same code on every node (@sec-rtl) | reached    |
+| 4. Hardware prototype   | two-node chain on GateMate boards with a PC as master and real RGBW LEDs (@sec-hardware)         | reached    |
+| 5. Evaluation           | PWM, packets and forwarding delay measured and compared with requirements and models (this chapter) | reached, with the limitations of @sec-eval-limitations |
+
+: Achievement of the objectives of @sec-objectives {#tbl-eval-objectives}
+
+The main objective, a digital control and forwarding subsystem that runs on a GateMate FPGA with an open-source flow and meets the main requirements on real hardware, is reached. The measured forwarding delay of 10.69 µs per node shows that a chain of 25 segments can be updated in about 2.5 ms, which is one tenth of the limit. The open points concern the analog part, the electrical limits of the evaluation board and features that were left for later versions, such as the checksum and the temperature sensor. These points are taken up in @sec-conclusion.

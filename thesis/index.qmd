@@ -1,17 +1,21 @@
 # List of Abbreviations {.unnumbered .unlisted}
 
+<!-- [NEW] added: AMC, BGA, CSV, MSB, NMOS, PNG, RS-485, SPI, SPICE (no comments possible inside the table) -->
+
 | **Abbreviation** | **Meaning** |
 |:-----------------|:------------|
 | AES    | AES Aircraft Elektro/Elektronik System GmbH |
+| AMC    | Acceptable Means of Compliance |
 | ASIC   | Application-Specific Integrated Circuit |
+| BGA    | Ball Grid Array |
 | BJT    | Bipolar Junction Transistor |
 | CCT    | Correlated Colour Temperature |
 | CPE    | Cologne Programmable Element (logic cell of the GateMate FPGA) |
 | CRC    | Cyclic Redundancy Check |
+| CSV    | Comma-Separated Values |
 | DC     | Direct Current |
 | EASA   | European Union Aviation Safety Agency |
 | EOP    | End of Packet |
-| ESD    | Electrostatic Discharge |
 | EUROCAE | European Organisation for Civil Aviation Equipment |
 | FIFO   | First In, First Out (buffer) |
 | FPGA   | Field-Programmable Gate Array |
@@ -30,18 +34,24 @@
 | LUT    | Look-Up Table |
 | LVDS   | Low-Voltage Differential Signalling |
 | MOSFET | Metal–Oxide–Semiconductor Field-Effect Transistor |
+| MSB    | Most Significant Bit |
 | MTBF   | Mean Time Between Failures |
+| NMOS   | N-channel MOSFET |
 | PC     | Personal Computer |
 | PIC    | Microcontroller family of Microchip Technology, master of the AES system |
 | PLL    | Phase-Locked Loop |
+| PNG    | Portable Network Graphics |
 | PWM    | Pulse-Width Modulation |
 | RAM    | Random-Access Memory |
 | RGB    | Red, Green, Blue |
 | RGBW   | Red, Green, Blue, White |
+| RS-485 | Recommended Standard 485, differential serial interface |
 | RTCA   | Radio Technical Commission for Aeronautics |
 | RTL    | Register-Transfer Level |
 | RX, TX | Receive, Transmit |
 | SOP    | Start of Packet |
+| SPI    | Serial Peripheral Interface |
+| SPICE  | Simulation Program with Integrated Circuit Emphasis |
 | SRAM   | Static Random-Access Memory |
 | TTL    | Transistor–Transistor Logic (logic-level serial signal) |
 | UART   | Universal Asynchronous Receiver-Transmitter |

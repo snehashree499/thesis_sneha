@@ -8,7 +8,7 @@ It starts with the application, the lighting of an aircraft cabin
 
 Previously, the lighting system used for aircraft cabins came from **fluorescent technology**, and LEDs were first added only for *coloured mood lighting*. As the efficiency of LEDs increased, they became able to produce the **white light** as well [@krellera2009]. Currently, aircrafts such as the **Airbus A380** and the **Boeing 787** use LED cabin lighting systems that combine white light and coloured LEDs [@lumileds2015].
 
-Light Emitting Diodes offers several advantages that are vital in an aircraft when compared to older light sources. A supplier of such systems reports energy savings of **35 % to 55 %** compared with previous lighting systems, and a lifetime of about **50,000 hours**, which is roughly ten times longer than that of incandescent, fluorescent or halogen lamps. Because LEDs are solid-state devices, they are also smaller, lighter and more resistant to vibration and shock, which reduces fuel consumption and maintenance [@lumileds2015].
+Light-emitting diodes offers several advantages that are vital in an aircraft when compared to older light sources. A supplier of such systems reports energy savings of **35 % to 55 %** compared with previous lighting systems, and a lifetime of about **50,000 hours**, which is roughly ten times longer than that of incandescent, fluorescent or halogen lamps. Because LEDs are solid-state devices, they are also smaller, lighter and more resistant to vibration and shock, which reduces fuel consumption and maintenance [@lumileds2015].
 
 The colour control of LEDs allows the cabin light changes with the phase of the flight which is known as *light scenes*. For instance, bright light for boarding, settings that imitate a sunrise in the morning, and a cool light in the evening. On long flights, such programmes are used to shift the sleep rhythm of the passengers slowly towards the time zone of the destination [@lumileds2015]. The aim is to support the mood and the biorhythm of the
 passengers and to create a pleasant atmosphere [@krellera2009].
@@ -43,7 +43,7 @@ changes between low values and 100 mA [@avago_hlmp_hx64].
 @fig-led-iv shows the typical shape of the current-voltage curve. Below the forward
 voltage, almost no current flows. Above it, the current rises very steeply, so a small
 change of the voltage gives a large change of the current. For this reason, an LED is
-always operated with a resistor or a current source that limits the current.
+always operated with a resistor or a current source that limits the current [@schubert2006].
 
 ![Current-voltage curves of a red and a green/blue LED, drawn with a simple diode model. The points mark the typical forward voltages at 20 mA [@avago_hlmp_hx64].](images/ch2_led_iv_curve){#fig-led-iv width=80%}
 
@@ -143,7 +143,8 @@ $$ {#eq-avg-current}
 For example, with $I_\text{LED} = 20\ \text{mA}$ and $D = 25\ \%$, the average current is
 $I_\text{avg} = 0.25 \cdot 20\ \text{mA} = 5\ \text{mA}$.
 
-@fig-pwm-duty shows two PWM signals with duty cycles of 25 % and 75 %
+@fig-pwm-duty shows two PWM signals with duty cycles of 25 % and 75 %.
+
 ![Ideal PWM signals with 25 % and 75 % duty cycle at $f_\text{PWM} \approx 763$ Hz.](images/ch2_pwm_duty_cycle){#fig-pwm-duty width=90%}
 
 In a digital circuit, a PWM signal is usually made with a *counter* and a *comparator*.
@@ -170,7 +171,7 @@ additional bit of resolution halves the PWM frequency.
 
 Because the light of a PWM-dimmed LED is switched on and off, the light output changes
 over time. If this change is slow enough, people can see it as *flicker*, or it can lead
-to other effects such as stroboscopic effects. A common measure is the *percent flicker*:
+to other effects such as stroboscopic effects [@ieee1789]. A common measure is the *percent flicker*:
 
 $$
 \text{Percent flicker} = 100\ \% \cdot \frac{L_\text{max} - L_\text{min}}{L_\text{max} + L_\text{min}}
@@ -193,7 +194,7 @@ For the PWM frequency of this thesis:
 1. Low-risk limit at 762.9 Hz: $0.08 \cdot 762.9 \approx 61\ \%$.
 2. Percent flicker of full on-off PWM: $100\ \%$.
 3. Since $100\ \% > 61\ \%$, a full on-off PWM at 762.9 Hz is above the low-risk level of
-   IEEE 1789, although it meets the AES requirement of more than 400 Hz.
+   IEEE 1789, although it meets the AES requirement of more than 400 Hz (Bronze) and more than 600 Hz (Silver).
 
 This point is discussed again in the evaluation (@sec-evaluation).
 
@@ -221,8 +222,8 @@ R = \frac{V_S - V_F - V_\text{sw}}{I_\text{LED}}
 $$ {#eq-series-resistor}
 
 where $V_F$ is the forward voltage of the LED and $V_\text{sw}$ is the voltage across the
-switched-on transistor. The prototype uses an N-channel *MOSFET* as the switch
-(@fig-low-side).
+switched-on transistor. The prototype uses an N-channel *MOSFET* as the switch [@nexperia_an90001] 
+(@fig-low-side). The prototype uses one resistor value of 470 Ω for all four colours, chosen in the same way (@sec-hw-driver).
 
 A MOSFET is controlled by its gate-source voltage $V_{GS}$. The gate is isolated from the
 channel, so it draws no steady current, and the control circuit only has to charge the
@@ -396,7 +397,7 @@ are connected to GPIO bank EB. The board has its own USB interface (FTDI FT2232H
 programming over JTAG, so the separate GateMate programmer board was not needed
 [@gatemate_ds1003].
 
-The two Pmod connectors of the board are connected to GPIO bank NB through SN74CB3T3245
+The two Pmod connectors of the board are connected to GPIO bank NB through SN74CB3T3245 [@ti_sn74cb3t3245] 
 bus switches with level shifting. Their supply is set to 3.3 V with a jumper to meet the
 Pmod specification [@gatemate_ds1003]. The FPGA itself works with I/O levels of at most
 2.5 V [@cologne_ds1001], so the outputs on the Pmod pins reach only about 2.5 V. This
@@ -426,7 +427,7 @@ values at each clock edge. Only a part of the Verilog language can be turned int
 hardware; this part is called *synthesizable*. Other constructs, such as delays
 (`#10`) or file access, are only used in testbenches.
 
-A design that should later be moved to an ASIC follows a few simple rules: one clock for
+In this thesis, a design that should later be moved to an ASIC follows a few simple rules: one clock for
 the whole design, no device-specific blocks inside the main logic, and clear borders
 between modules. Device-specific parts, such as the PLL and the I/O pins, are kept at the
 top level of the design (@sec-rtl).

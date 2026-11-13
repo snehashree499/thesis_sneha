@@ -1,3 +1,50 @@
 # Conclusion and Outlook {#sec-conclusion}
 
-*This chapter is in progress and will follow in the next version.*
+This chapter sums up the results of the thesis (@sec-conclusion-summary) and shows how the work can be continued (@sec-outlook).
+
+## Conclusion {#sec-conclusion-summary}
+
+The aim of this thesis was to design the digital control and forwarding part of a daisy-chainable RGBW LED driver for aircraft cabin lighting, to implement it on a GateMate FPGA with open-source tools, and to show on real hardware that it meets the main requirements of AES (@sec-objectives).
+
+The requirements were collected from the AES documents and sorted into those that belong to the digital design and those that belong to the analog part (@tbl-requirements). Two values set the direction of the design. A 16-bit PWM above 400 Hz needs a clock of more than 26.2 MHz, and 50 MHz was chosen because it also gives exactly 50 clock cycles per bit at 1 MBaud. The timing analysis of the chain showed that with store-and-forward, where each node first receives the whole rest of the packet before it sends it on, the 25th segment would get its data only after 29.2 ms, which is more than the limit of 25 ms. With **cut-through forwarding**, where each word is sent on as soon as it is received, this time is only about 2.5 ms (@sec-req-timing).
+
+A Simulink model of the data path, from the serial input to the four PWM outputs and the LED stage, was built as a reference (@sec-simulink). The duty cycles of the model and of the hardware agree exactly for the values that were measured on both.
+
+The RTL design is one **Flexlink node** in plain Verilog (@sec-rtl). It receives the Flexlink packets, keeps its own four brightness values, forwards the rest of the packet while it is still being received, gives itself an ID with the *Count Segments* command and sends the answers of all nodes back to the master in the order of the chain. The same bitstream runs on every node. The design uses 1.9 % of the logic of the GateMate and reaches a maximum clock frequency of 68.8 MHz, so the 50 MHz clock has a safe margin. The PLL is the only block that depends on the FPGA vendor.
+
+The prototype with two GateMate boards, a PC as master and real red, green, blue and white LEDs confirmed the design (@sec-hardware). The measured values are close to the calculated and simulated ones (@tbl-eval-comparison):
+
+- The PWM frequency is 763.0 Hz, and the smallest step is one clock cycle of about 20 ns.
+- The forwarding delay per node is 10.69 µs, compared with 10.65 µs in the RTL simulation.
+- With this delay, a chain of 25 segments is updated in about 2.48 ms, which is one tenth of the limit. In theory, a chain of up to 253 nodes would still meet the 25 ms limit.
+- All 14 robustness tests that were measured on the hardware gave the expected result (@tbl-robustness).
+
+All Bronze requirements that belong to the digital function are met, except that the values are not kept after power-off (R5). The design also meets the Silver PWM frequency of more than 600 Hz and passes the answers of all nodes to the master (@tbl-eval-requirements). It does not reach the Gold PWM frequency of more than 1 kHz. The open points are mainly in the analog part and in the electrical limits of the evaluation board, whose outputs reach only about 2.5 V (@sec-eval-limitations).
+
+The main objective of the thesis is therefore reached. The work shows that the digital part of the LED driver can be built as one small, vendor-independent RTL design that runs on every node of the chain, and that a complete open-source flow is enough to take this design from Verilog to working hardware.
+
+## Outlook {#sec-outlook}
+
+The prototype leaves several points open. They are sorted here from small changes in the RTL to larger steps towards a product.
+
+1. **Checksum.** Flexlink v1 as used here has no checksum, so a packet with the right structure but wrong data is not detected (@sec-hw-robustness). A checksum at the end of each packet could be checked in the decoder, and a node would then keep its old values when the check fails.
+
+2. **Real values in the answers.** The answer contains a fixed temperature value. A temperature sensor could be read by the node and its value placed in the answer (R9). To meet the Silver level fully, the answers would also need the LED current status and the current setting (R18). This requires a driver stage that reports these values to the node.
+
+3. **Keeping the values after power-off.** The brightness values are lost when the power is switched off (R5). An external non-volatile memory could store the last values, and the node could load them at power-up before the first packet arrives.
+
+4. **PWM frequency above 1 kHz.** With the 16-bit counter, the Gold level needs a clock of at least 65.5 MHz. According to the PLL ranges in the datasheet, a clock of 66 MHz can also be generated in economy mode [@cologne_ds1001]. It would give about 1007 Hz and still allow an integer number of 66 clock cycles per bit at 1 MBaud. The design reaches 68.8 MHz, so the margin at 66 MHz would be only about 0.6 ns. The critical path in the decoder would have to be shortened first, for example by adding a register stage. A second way is to change the PWM method and split each PWM period into several shorter parts, so that the LED is switched more often while the average brightness stays the same. This would also lower the flicker (@sec-pwm-parameters). 
+   
+5. **Electrical interface.** The outputs of the evaluation board reach only about 2.5 V, and the PWM high level falls to about 1.3 V with the driver stage connected (@sec-hw-driver). A level shifter for the data lines to 3 V to 5 V (R12) and a gate driver for logic levels would make the operating point safe. In a product, the BS170 and the series resistor would be replaced by an LED driver with regulated current (R11).
+
+6. **Differential data lines.** For the Gold level, the single-ended UART lines could be replaced by differential lines similar to RS-485 [@ti_rs485] or LVDS [@ti_lvds] (R21). The RTL would stay the same, because only the transceivers between the node and the cable change. 
+
+7. **Longer chain and a real master.** The chain was built with two nodes, and 25 segments were only calculated. A test with more boards would confirm that the delay per node adds up as expected. A microcontroller with a 9-bit UART as master could send the words of a packet without gaps, so that the update time of the chain could be measured directly.
+
+8. **Power consumption.** The design is small, but its power was not measured (R14). A measurement of the current of the FPGA at different PWM values would show how much power one node needs.
+
+9.  **Simulink model.** The model works with one 64-bit frame and uses the measured delay as an input (@sec-sim-chain). Adding 9-bit words with the least significant bit first and a cut-through forwarding block would let the model predict the delay instead of only reproducing it.
+
+10. **Path to an ASIC.** The RTL is written in plain Verilog, and the PLL is the only vendor block (@sec-eval-resources). The next step towards an ASIC is to replace the PLL with the clock source of the target technology and to run the design through an ASIC flow. This would also give values for the area and the power of one node.
+
+

@@ -1,6 +1,6 @@
 # Introduction {#sec-introduction}
 
-LED driver systems are widely used in lighting, displays, automotive applications, and many **embedded systems**. In modern aircraft, LED lighting systems are used for cabin illumination, safety lighting, signage, and many other functions. These systems must be highly reliable, efficient, and suitable for the *demanding conditions of aviation*. Subsystems for aircraft lighting must combine minimal weight, precision optical control, simplified wiring, and excellent dependability. Conventional methods frequently use many parallel control lines and *centrally controlled drivers*; however, the wiring overhead increases dramatically as the number of individually controllable segments increases. A scalable approach that keeps the connection complexity almost constant as more segments are added is the **daisy-chainable segment** concept, in which each segment receives data, applies local settings, and passes the remaining data downstream.
+LED driver systems are widely used in lighting, displays, automotive applications, and many **embedded systems**. In modern aircraft cabins, almost all lighting is now LED-based, from the ceiling and sidewall lighting to the reading lamps [@lumileds2015]. These systems must be energy efficient, have a long lifetime and withstand vibration and shock [@lumileds2015]. The weight and the power consumption of the lighting system are important, because they increase the fuel consumption of the aircraft [@krellera2009]. If every segment of the cabin is controlled by its own lines from a central driver, the number of wires grows with every segment that is added. A scalable approach that keeps the connection complexity almost constant as more segments are added is the **daisy-chainable segment** concept, in which each segment receives data, applies local settings, and passes the remaining data downstream [@aes_wishlist].
 
 **Mixed-signal LED drivers** combine analog current-driving circuits with digital control logic. The digital part is responsible for controlling **PWM (Pulse-Width Modulation)**, managing configuration registers, coordinating interfaces, and ensuring correct timing behaviour. AES’s baseline concept specifies an LED driver IC operating from **18–36 V** and is required to manage at least *four channels* with separately adjustable channel currents, **low-side PWM**, and **16-bit dimming precision**. Perceptual simultaneity is a crucial system constraint. The 25th IC should have completed reception within 25 ms from the time the first IC begins receiving, so that the change appears simultaneous to human observers. The internal requirements report further details an initial digital approach using **UART I/O with AES's custom framing protocol "Flexlink"**, forming the starting point for this thesis’ *digital design and validation*. 
 
@@ -8,7 +8,7 @@ The proposed AES LED driver constitutes a mixed-signal integrated system combini
 
 ## Motivation and Challenges
 
-In an aircraft cabin, **Lighting** is one of the most visible parts of the passenger experience. **Light-emitting diodes (LEDs)** are used widely in modern aircraft cabin instead of fluorescent tubes, because of their smaller, lighter, more efficient nature and also produces *various colors*. An airline can create different *light effects* for each phase of a flight with *red, green, blue and white (RGBW)* LEDs, for instance a bright, neutral light for boarding, a warm light during the meal service, and a dim, blue light at night. 
+In an aircraft cabin, **Lighting** is one of the most visible parts of the passenger experience. **Light-emitting diodes (LEDs)** are used widely in modern aircraft cabin instead of fluorescent tubes, because of their smaller, lighter, more efficient nature and also produces *various colors* [@krellera2009; @lumileds2015]. An airline can create different *light effects* for each phase of a flight with *red, green, blue and white (RGBW)* LEDs, for instance a bright, neutral light for boarding, a warm light during the meal service, and a dim, blue light at night [@lumileds2015].
 
 A cabin contains many light segments along the ceiling and the side walls. All these segments should change their colour and brightness simultaneously to avoid *visible flicker*. This is achieved by sending the brightness values to all segments over a digital communication line by a *central controller*. 
 
@@ -16,7 +16,7 @@ Electronics for aircraft must also be *reliable and cost-effective*. Each extra 
 
 Using field-programmable gate array (FPGA) for communication reduces cost and point of failures by handling **more than one** RGBW segment.
 
-This thesis  investigates this approach together with **AES Aircraft Elektro/Elektronik System GmbH** in Bremen. The work uses the **Cologne Chip GateMate FPGA**, which is developed in Germany, and a fully open-source design flow consisting of **Yosys, nextpnr and openFPGALoader**.
+This thesis investigates this approach together with **AES Aircraft Elektro/Elektronik System GmbH** in Bremen. The work uses the **Cologne Chip GateMate FPGA**, which is developed in Germany [@eenews_gatemate], and a fully open-source design flow consisting of **Yosys, nextpnr and openFPGALoader** [@shah2019; @openfpgaloader].
 
 ### Problem statement
 
@@ -29,6 +29,7 @@ Therefore, the problem addressed in this thesis is:
 This implementation uses chain of LEDs. One controller sends the data for all segments (peripherals), and each node passes the data on to the next node. This structure is called a **daisy-chain arrangement**. In the AES system, **PIC** is the **controller** and it sends data to all **peripherals** with the company's own **Flexlink protocol** over a **9-bit UART interface**.
 
 In a daisy-chain arrangement, each node must perform four main tasks:
+
 1. **Receive:** Take the data that belongs to its own LED segment.
 2. **Forward:** Pass the rest of the data to the next node, with as little delay as possible. 
 3. **Brightness Data:** Convert its brightness data into pulse-width modulation (PWM) signals for its respective channels - red, green, blue and white LEDs. 

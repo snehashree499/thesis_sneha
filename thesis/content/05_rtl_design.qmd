@@ -1,6 +1,6 @@
 # RTL Design of the Flexlink Node {#sec-rtl}
 
-This chapter describes the Verilog design that runs on each GateMate FPGA in the chain.
+This chapter describes the Verilog design that runs on each GateMate FPGA in the chain. The complete code is given in @sec-app-verilog.
 In this thesis, a GateMate that runs this design is called a **Flexlink node**. Every node
 in the chain uses the same design. The first GateMate (node) receives Flexlink packets from
 the *master* (the PC in this prototype) over the *uplink*; every following node receives them from the node before it.
@@ -15,7 +15,7 @@ top level down to the single blocks.
 
 The design follows the requirements provided by AES (@sec-requirements). The details of the implementation follow in the later sections of this chapter. 
 
-**1. Portable, synthesizable code.** The design is written in synthesizable Verilog
+**1. Portable, synthesizable code.** The design is written in synthesizable Verilog [@ieee1364] 
 (@sec-verilog) and uses only general elements such as registers, counters, comparators
 and a small memory. **The only GateMate-specific block is the PLL** (`CC_PLL`) in the top
 module; the pin assignment is kept in a separate *constraint file*.
@@ -41,7 +41,7 @@ LED nodes are identical, so any node can be replaced by any other without buildi
 bitstream.
 
 **5. Cut-through forwarding.** **A node forwards every word that is not its own as soon
-as it has received it**, instead of first receiving the whole packet (*cut-through*). The
+as it has received it**, instead of first receiving the whole packet (*cut-through*) [@kermani1979]. The 
 reason is the time limit of AES: with store-and-forward, the delay would grow by one full
 packet at every node, which exceeds 25 ms for a long chain, while cut-through adds only
 about one word time per node (@sec-daisy-latency). A small *first-in-first-out* (FIFO)
@@ -257,7 +257,7 @@ with its own clock, so it can change at any time relative to the system clock. S
 receiver must read each bit at a moment when the bit is stable, which is in the **middle**
 of the bit (@sec-uart).
 
-**Input synchronizer.** The input `rx` first passes through two flip-flops in a row
+**Input synchronizer.** The input `rx` first passes through two flip-flops in a row [@ginosar2011] 
 (`rx_meta` and `rx_sync`). If the first flip-flop samples the line exactly while it
 changes, it can become *metastable* for a short time. The second flip-flop gives it one
 full clock cycle to settle, so the rest of the receiver only sees a clean signal
@@ -566,7 +566,7 @@ be avoided. The design uses three rules.
 The four 16-bit registers `level_red`, `level_green`, `level_blue` and `level_white` hold the
 brightness values that the node shows. They are written only at the EOP of a complete LED
 packet (@lst-decoder-eop). Between two packets, they keep their values, so the LEDs show
-the same light until the master sends new values. This meets requirement R5. At power-up,
+the same light until the master sends new values. This covers the part of requirement R5 (@tbl-requirements) that concerns the time between packets. The values are not kept after power-off. At power-up,
 all levels are 0, so the LEDs are off until the first LED packet arrives.
 
 The registers are separate from `frame_data`. During a packet, `frame_data` fills byte by
@@ -733,13 +733,12 @@ format.
   line, the stop bit and the packet structure are still correct, so the wrong value is
   shown.
 - **Shifted data.** If the master sends one value too many for an earlier node, all later
-  nodes take bytes that were meant for their neighbour, as shown in test C3
-  (@sec-hw-robustness).
+  nodes take bytes that were meant for their neighbour, which cannot be detected without a checksum (@sec-hw-robustness).
 
 Both errors could be found with a **checksum** for each segment, which the master adds to
 the packet and the node checks before it takes over the values. A first version of this
 idea was tried during the work, but it is not part of the final design. It is discussed
-as an extension in [TODO: reference to the outlook in Chapter 8].
+as an extension in @sec-outlook. 
 
 **No reset input.** The design has no reset signal. All registers get their start values
 from the bitstream when the FPGA is configured (@sec-clock-reset). If a node ever ends up
@@ -749,7 +748,7 @@ SOP sets all packet flags and counters back to their start values.
 ## Verification by Simulation {#sec-rtl-verification}
 
 Before the design was loaded into the FPGA, it was checked by simulation with the
-open-source simulator Icarus Verilog (@sec-simulation). The testbench
+open-source simulator Icarus Verilog [@icarus_verilog] (@sec-simulation). The testbench 
 `tb_flexlink_node.v` connects **two** instances of the node in a chain, exactly as on the
 hardware, and adds a third UART receiver that plays the role of the PC. A task in the
 testbench sends 9-bit words at 1 MBaud to the input of GM1, and the testbench records all

@@ -1,6 +1,217 @@
 # System-Level Modelling in MATLAB/Simulink {#sec-simulink}
 
-*This chapter is in progress and will follow in the next version.*
+The data path of a node was modelled in MATLAB/Simulink [@mathworks_simulink] before the Verilog design was written. This chapter describes that model. It first explains what the model covers and where it differs from the implemented design (@sec-sim-scope), and then describes the structure of the model and how it was built, including the libraries and the settings used (@sec-sim-structure, @sec-sim-build). After that, it follows the signal through the model, from the serial line (@sec-sim-frame) through the receiver (@sec-sim-receiver), the splitting of the frame (@sec-sim-latch) and the PWM generation (@sec-sim-pwm) to the LED power stage (@sec-sim-led). The last sections describe the two-node chain (@sec-sim-chain), the results of the simulation (@sec-sim-results) and the limits of the model (@sec-sim-limitations).
 
-## Latency Model {#sec-sim-latency}
-## Latch Model {#sec-sim-latch}
+## Purpose and Scope of the Model {#sec-sim-scope}
+
+The model in this chapter was built before the Flexlink specification was available in full, so it describes a **simplified single-wire link** and not Flexlink itself. Its purpose was to check the path from a serial input through frame decoding and PWM generation to a simulated LED current, and to confirm that a 64-bit RGBW frame can be received, split into four channels and turned into four PWM signals. The implemented design in @sec-rtl follows the Flexlink specification. @tbl-model-vs-impl lists the points where the two differ.
+
+| **Aspect**             | **Simulink model (this chapter)**                       | **Implemented design (@sec-rtl, @sec-hardware)**              |
+|:-----------------------|:--------------------------------------------------------|:--------------------------------------------------------------|
+| Frame structure        | one 66-bit frame: start bit, 64 data bits, stop bit     | 11-bit words: start bit, 9 data bits, stop bit                |
+| Bit order              | MSB first across the whole frame                        | LSB first within each 9-bit word, bytes high byte first       |
+| Control and data words | not modelled                                            | 9th bit: 1 = control word, 0 = data byte                      |
+| Bit time               | 1 ms per bit, so that the waveforms are visible         | 1 µs per bit (1 MBaud), 11 µs per word                        |
+| Oversampling           | 4 samples per bit (0.25 ms)                             | 50 clock cycles per bit at 50 MHz                             |
+| Node addressing        | not modelled                                            | Count Segments packet gives each node its ID                  |
+| Answers to the master  | not modelled                                            | LED and Count answers on the downlink, in the order of the chain |
+| Several nodes          | repeater chain, both nodes receive the same data        | cut-through, each node keeps 8 bytes and forwards the rest    |
+| Forwarding delay       | 10.75 ms, scaled from the measurement                   | 10.69 µs measured, 10.65 µs simulated                         |
+| PWM counter clock      | 1 µs per step, chosen for visibility                    | 50 MHz system clock                                           |
+| PWM frequency          | 15.26 Hz                                                | 762.94 Hz calculated, 763.0 Hz measured                       |
+| LED stage              | Simscape SPICE MOSFET and diode                         | BS170 MOSFET and real LEDs on the breadboard                  |
+
+: Differences between the system-level Simulink model and the implemented Flexlink node {#tbl-model-vs-impl}
+
+The most important difference is the **time scale**. The serial line of the model runs **1000 times slower** than the hardware, so one bit takes 1 ms instead of 1 µs. The PWM counter of the model advances every 1 µs instead of every 20 ns, so the PWM runs **50 times slower**. With these values, every bit and every PWM edge can be seen clearly in the plots, and the simulation still finishes in a short time. The function of the data path does not depend on the time scale, so the order of the values and the duty cycles are the same as in the hardware.
+
+## Model Structure {#sec-sim-structure}
+
+The model consists of two parts. A MATLAB script, `run_singlewire_txrx_rgbw.m`, acts as the **transmitter and testbench**. It builds the frame from four 16-bit values, turns it into a serial signal and passes this signal to the Simulink model as a time series. The Simulink model, `GateMate_SingleWire_TxRx_RGBW.slx`, acts as the **device**. @fig-sim-toplevel shows its top level.
+
+![Top level of the two-node Simulink model: serial source, node 1, transport delay, node 2 and the LED power stage of each node.](images/matlab/fig_model_toplevel.png){#fig-sim-toplevel width=100%}
+
+Each node is built from three subsystems:
+
+1. **`SingleWire_RX`** receives the serial signal and outputs the 64-bit frame (@sec-sim-receiver).
+2. **`Digital`** splits the frame into four 16-bit values and generates four PWM signals (@sec-sim-latch, @sec-sim-pwm).
+3. **`LED_Power_Stage_RGBW`** turns each PWM signal into an LED current with a Simscape circuit (@sec-sim-led).
+
+The serial signal of node 1 is passed through a **Transport Delay** block to node 2. This block represents the forwarding delay of one node (@sec-sim-chain).
+
+### Building the Model {#sec-sim-build}
+
+The model was built with three MathWorks products: **Simulink** for the signal flow and the digital logic, **Simscape** for the physical network of the LED stage, and the SPICE-compatible components of **Simscape Electrical** for the transistor and the diode [@mathworks_simulink]. All three were used in **MATLAB R2025b**. 
+
+The work is split between a MATLAB script and the Simulink model. The script prepares the input signal and evaluates the results, and the model simulates the two nodes. @fig-sim-workflow shows how the two parts work together.
+
+![Workflow of the model. The MATLAB script sets the test values, builds the serial signal and passes it to the Simulink model as a time series. The model returns the LED currents, which the script plots and exports. The dashed arrow shows that the values can be changed and the run repeated.](images/matlab/ch4_build_workflow){#fig-sim-workflow width=90%}
+
+The workflow has four steps:
+
+1. The script sets the four test values and the parameters, for example the forwarding delay `fwd_delay_model` = 10.69 ms.
+2. The script builds the 64-bit frame, turns it into a bit sequence with idle, start and stop bits, and stores it as the time series `Serial_Data_sim`.
+3. The model reads this signal with a **From Workspace** block, simulates both nodes and writes the eight LED currents to the workspace with **To Workspace** blocks (`I_LED_R_ts` … `I_LED_W_ts1`).
+4. The script plots the results and exports the figures of this chapter.
+
+@tbl-sim-blocks lists the blocks used in the model and the library each block comes from.
+
+| **Library**                         | **Block**                                    | **Use in the model**                                         |
+|:------------------------------------|:---------------------------------------------|:-------------------------------------------------------------|
+| Simulink / Sources                  | From Workspace, Constant                     | serial input signal, constant values                         |
+| Simulink / Sinks                    | To Workspace, Scope, Display                 | saving the LED currents, viewing signals, showing the frame  |
+| Simulink / Ports & Subsystems       | Subsystem, Inport, Outport                   | structure of the nodes and their interfaces                  |
+| Simulink / User-Defined Functions   | MATLAB Function                              | receiver `RX_Core`                                           |
+| Simulink / Logic and Bit Operations | Detect Decrease, Shift Arithmetic, Bitwise Operator, Relational Operator | edge detection, frame splitting, PWM comparators |
+| Simulink / Discrete                 | Unit Delay                                   | register of the PWM counter (sample time 1 µs)               |
+| Simulink / Math Operations          | Bias, Gain                                   | counter +1, PWM to gate voltage (× 3.3)                      |
+| Simulink / Signal Attributes        | Data Type Conversion                         | conversion to `uint16` and to `double`                       |
+| Simulink / Signal Routing           | Switch                                       | reset of the PWM counter                                     |
+| Simulink / Continuous               | Transport Delay                              | forwarding delay between the nodes                           |
+| Simscape                            | Simulink-PS Converter, PS-Simulink Converter, Solver Configuration, Electrical Reference, DC Voltage Source, Controlled Voltage Source, Current Sensor | physical network of the LED stage |
+| Simscape Electrical (SPICE-compatible components) | SPICE NMOS, SPICE Diode, SPICE Resistor | transistor, LED and series resistor             |
+
+: Blocks used in the Simulink model and their libraries {#tbl-sim-blocks}
+
+All blocks are ordinary copies from these libraries. The model does not use a library of its own blocks. @tbl-sim-settings lists the main simulation settings.
+
+| **Setting**                        | **Value**                                   |
+|:-----------------------------------|:--------------------------------------------|
+| Solver                             | `VariableStepAuto`, relative tolerance 10⁻³, zero-crossing detection on |
+| Stop time                          | 0.22 s                                      |
+| Sample time of `RX_Core`           | 0.25 ms (4 samples per bit)                 |
+| Sample time of the PWM counter     | 1 µs                                        |
+| Transport Delay                    | `fwd_delay_model` = 10.69 ms                |
+| Input filter of the Simulink-PS Converter | first order, time constant 1 ms      |
+
+: Main settings of the Simulink model {#tbl-sim-settings}
+
+## Frame Format and Serialisation {#sec-sim-frame}
+
+The script uses the test values R = 10,000, G = 20,000, B = 30,000 and W = 40,000. In hexadecimal, these are 0x2710, 0x4E20, 0x7530 and 0x9C40. The four values are joined into one 64-bit frame, with red in the highest 16 bits and white in the lowest:
+
+$$
+\text{frame} = R \cdot 2^{48} + G \cdot 2^{32} + B \cdot 2^{16} + W = \texttt{0x27104E2075309C40}
+$$ {#eq-sim-frame}
+
+The frame is sent **MSB first** and wrapped in a simple frame: the line rests high (idle), a start bit (0) marks the beginning, the 64 data bits follow, and a stop bit (1) ends the frame. Five idle bits before the frame and ten after it give 81 bits in total. With a bit time of 1 ms, the data field takes 64 ms and the whole transmission 81 ms. @fig-sim-serial shows the resulting signal.
+
+![Single-wire signal for the frame 0x27104E2075309C40. The dashed lines mark the start and the stop bit.](images/matlab/fig_serial_waveform.png){#fig-sim-serial width=12cm}
+
+## Receiver: Start-Bit Detection and Bit-Centre Sampling {#sec-sim-receiver}
+
+@fig-sim-rx shows the receiver subsystem. Its core is the block `RX_Core`, a MATLAB Function block with a sample time of **0.25 ms**, which gives four samples per bit. The output `Serial_Out` is a direct branch of the input, so the node passes the whole signal on. The block `Detect Decrease` (shown as `U < U/z`) marks falling edges on the output `Falling_Edge`. This output is only used for debugging and is connected to a scope.
+
+![Receiver subsystem `SingleWire_RX`. `RX_Core` decodes the frame, and the `U < U/z` block provides the `Falling_Edge` debug output. The unconnected constant is not used.](images/matlab/fig_singlewire_rx.png){#fig-sim-rx width=12cm}
+
+`RX_Core` works as a small state machine. It keeps its state between calls in persistent variables and follows these steps:
+
+1. **Idle.** The block watches the line, which rests high.
+2. **Start bit.** A change from high to low is taken as the start bit. The counters are reset and the block starts to receive.
+3. **Sampling.** The first data bit is sampled 6 samples after the edge, which is 1.5 bit times later, and every further bit 4 samples after the previous one. These sampling points lie in the **centre of each bit**, where the level is stable.
+4. **Shifting.** Each sampled bit is shifted into a register from the right: the register is shifted left by one place, and the new bit is placed in the least significant position. Because the transmitter sends the MSB first, the first bit ends up as the MSB after 64 steps, and the original order is restored.
+5. **Frame complete.** After 64 bits, the register is copied to `Frame_Out`, `Frame_Valid` is set for one step of 0.25 ms, and the block returns to idle.
+
+The transmitter always sends the stop bit, but the receiver does not check it after the 64th data bit. The receiver also has no timeout and does not filter noise. These points did not matter for the purpose of the model, but they are listed in @sec-sim-limitations. The complete code of RX_Core is given in @sec-app-rxcore.
+
+## Splitting the Frame {#sec-sim-latch}
+
+The subsystem `Digital` (@fig-sim-digital) first splits the frame into the four colour values and then generates the PWM signals.
+
+![Digital subsystem: splitting of the frame followed by the PWM generation.](images/matlab/fig_digital.png){#fig-sim-digital width=100%}
+
+@fig-sim-parsing shows the splitting. The frame is shifted right by 48, 32, 16 and 0 places, masked with a bitwise AND with 0xFFFF and converted to the type `uint16`. This gives the values `R_Value`, `G_Value`, `B_Value` and `W_Value`.
+
+![Splitting the 64-bit frame into four 16-bit channels. The Display block shows the received frame as a decimal value, 2.815 × 10¹⁸, which is 0x27104E2075309C40.](images/matlab/fig_frame_parsing.png){#fig-sim-parsing width=100%}
+
+`Frame_Out` changes only when a complete frame has been received, and it keeps its value until the next frame. All four colour values therefore change at the same moment. This is the same idea as the level registers of the implemented design, which take over the new values only at the end of a correct packet (@sec-led-registers).
+
+## PWM Generation {#sec-sim-pwm}
+
+@fig-sim-pwm shows the PWM generation. A 16-bit counter is built from a `Unit Delay` block and an addition of 1. It advances every 1 µs and starts again at 0 after 65,535. A Switch resets the counter to 0 when `Frame_Valid` is set, so that all four PWM signals start a new period together when a new frame arrives. Four `Less Than` comparators compare the counter with the four colour values. Each output is high while the counter is smaller than the value, as in the PWM generator of the implemented design (@sec-pwm-counter).
+
+![PWM generation: a 16-bit counter that starts again after 65,535 and four comparators.](images/matlab/fig_pwm_generation.png){#fig-sim-pwm width=14cm}
+
+One PWM period takes $65{,}536 \cdot 1\ \mu\text{s} = 65.536\ \text{ms}$, which gives a PWM frequency of 15.26 Hz in the model (@eq-pwm-frequency). In the hardware, one counter step is one clock cycle of 20 ns, so the period is $65{,}536 \cdot 20\ \text{ns} = 1.311\ \text{ms}$ and the frequency 762.9 Hz. The ratio $1\ \mu\text{s} / 20\ \text{ns} = 50$ is the factor between the two. The duty cycle for a value $v$ is $v / 65{,}536$, so the four test values give on-times of 10.0, 20.0, 30.0 and 40.0 ms. @fig-sim-pwm-node1 shows the four PWM outputs of node 1.
+
+![PWM outputs of node 1. The signals rise together when `Frame_Valid` resets the counter at 69.5 ms and fall after 10.0, 20.0, 30.0 and 40.0 ms.](images/matlab/fig_pwm_node1.png){#fig-sim-pwm-node1 width=13cm}
+
+## LED Power Stage {#sec-sim-led}
+
+The subsystem `LED_Power_Stage_RGBW` (@fig-sim-led) models the analog part with Simscape [@mathworks_simscape]. It has four identical channels. In each channel, the PWM signal is converted to a voltage of 0 V or 3.3 V and applied to the gate of a SPICE NMOS transistor. The transistor switches an LED, modelled as a SPICE diode, and a series resistor on a 12 V supply, which is the same low-side arrangement as on the prototype (@sec-low-side-switching). A current sensor in each channel measures the LED current. @tbl-sim-led lists the component values. 
+
+![Simscape LED power stage. The four channels are identical, and the component values are given in @tbl-sim-led.](images/matlab/fig_led_power_stage.png){#fig-sim-led width=13cm}
+
+| **Component**            | **Value**                            |
+|:-------------------------|:-------------------------------------|
+| Supply voltage           | 12 V                                 |
+| Series resistor          | 510 Ω                                |
+| Gate voltage when on     | 3.3 V                                |
+| Gate pull-down resistor  | 100 kΩ                               |
+| NMOS threshold voltage   | 1.5 V (SPICE parameter VTO)          |
+| LED                      | generic SPICE diode, about 0.73 V    |
+
+: Component values of one channel of the Simscape LED power stage {#tbl-sim-led}
+
+With these values, the LED current when the transistor is on is
+
+$$
+I_\text{LED} = \frac{12\ \text{V} - 0.73\ \text{V}}{510\ \Omega} \approx 22.1\ \text{mA}
+$$ {#eq-sim-iled}
+
+The simulated current is 22.1 mA, and a check of the same circuit in LTspice [@adi_ltspice] gives 22.06 mA. When the transistor is off, the current falls to about $1.18 \cdot 10^{-11}$ A. The generic diode has a lower forward voltage than a real coloured LED, so these values describe the circuit, not a particular LED. 
+
+## Two-Node Chain and Forwarding Delay {#sec-sim-chain}
+
+To model a chain, the serial signal of node 1 is passed to node 2 through a **Transport Delay** block. The delay is set to 10.69 ms, which is the measured forwarding delay of 10.69 µs (@sec-hw-chain) multiplied by the time scale of 1000.
+
+In the model, node 2 detects its start bit at 15.75 ms instead of 5.00 ms, so the offset between the nodes is 10.75 ms. The offset measured in the model is 10.75 ms rather than 10.69 ms, because the receiver samples the line every 0.25 ms and the start bit is detected at the next sampling instant:
+
+$$
+t_\text{detect} = \left\lceil \frac{10.69\ \text{ms}}{0.25\ \text{ms}} \right\rceil \cdot 0.25\ \text{ms} = 43 \cdot 0.25\ \text{ms} = 10.75\ \text{ms}
+$$ {#eq-sim-detect}
+
+The difference of 0.06 ms is 6 % of one bit period. @fig-sim-pwm-node2 shows the PWM outputs of node 2.
+
+![PWM outputs of node 2, the same as for node 1 but delayed by 10.75 ms.](images/matlab/fig_pwm_node2.png){#fig-sim-pwm-node2 width=13cm}
+
+The nodes in the implemented system forward data by cut-through. A packet leaving the PC carries eight data bytes for each segment in the chain. GM1 stores the first eight bytes, which hold its own red, green, blue and white values, and sends the remaining words on to GM2. @fig-cutthrough shows this for the two-node setup. Because every byte travels as its own eleven-bit word with its own start and stop bit [@aes_flexlink], GM1 does not have to rebuild any framing. It repeats the words it does not keep. This is why the forwarding delay stays at 10.69 µs per node and does not grow with the length of the packet.
+
+![Cut-through forwarding in the two-node chain. GM1 keeps the first eight data bytes and passes the remaining words to GM2. The byte values are taken from the oscilloscope capture in @sec-hw-communication.](images/matlab/flexlink_cutthrough.png){#fig-cutthrough width=100%}
+
+The Simulink model works differently. Node 1 passes the complete frame on, so both nodes decode the same values and drive the same LED currents. The model was built to check the path from a serial line through frame decoding and PWM generation to an LED current, and that path does not depend on which part of a packet a node keeps for itself. Cut-through is therefore shown on the hardware and not in the simulation.
+
+## Simulation Results {#sec-sim-results}
+
+The simulation runs for 0.22 s with the variable-step solver `VariableStepAuto`. @tbl-sim-results summarises the results, and @fig-sim-currents shows the LED currents of both nodes.
+
+| **Quantity**                              | **Node 1**       | **Node 2**       |
+|:------------------------------------------|:-----------------|:-----------------|
+| Start bit detected                        | 5.00 ms          | 15.75 ms         |
+| Frame complete (`Frame_Valid`)            | 69.50 ms         | 80.25 ms         |
+| Received frame                            | 0x27104E2075309C40 | 0x27104E2075309C40 |
+| PWM on-times R / G / B / W                | 10.0 / 20.0 / 30.0 / 40.0 ms | 10.0 / 20.0 / 30.0 / 40.0 ms |
+| Duty cycles R / G / B / W                 | 15.26 / 30.52 / 45.78 / 61.04 % | 15.26 / 30.52 / 45.78 / 61.04 % |
+| PWM period                                | 65.536 ms        | 65.536 ms        |
+| LED current on / off                      | 22.1 mA / 1.18 · 10⁻¹¹ A | 22.1 mA / 1.18 · 10⁻¹¹ A |
+
+: Results of the Simulink simulation for the test values R/G/B/W = 10,000/20,000/30,000/40,000 {#tbl-sim-results}
+
+![LED currents at both nodes. Node 2 shows the same currents as node 1, 10.75 ms later. White is drawn in grey, so that it can be seen on a white background.](images/matlab/fig_led_currents.png){#fig-sim-currents width=13cm}
+
+The results confirm the data path of a node. The frame is received without error, the four values reach the correct channels, and the duty cycles match $v / 65{,}536$ for all four values. The frame is complete at 69.50 ms, which is the centre of the last data bit: 5 ms for the idle bits, 1 ms for the start bit and 63.5 ms for the 64 data bits up to the centre of the last one. The same duty cycle was later measured on the hardware for the value 10,000, with an on-time of 200.0 µs in a period of 1.311 ms, which is also 15.26 % (@sec-hw-pwm).
+
+Two warnings appear when the model runs, and both are expected. The warning *Wrap on overflow* in the counter of the PWM generation comes from the 16-bit counter starting again after 65,535, which is the intended behaviour. The warning that the buffer of the Transport Delay block was too small and has been increased by Simulink does not affect the results.
+
+## Limitations of the Model {#sec-sim-limitations}
+
+The model served its purpose as an early check of the data path, but it has clear limits.
+
+1. **It is not Flexlink.** The model uses one 64-bit frame instead of 9-bit words and has no control words, no node addressing and no answers (@tbl-model-vs-impl). The protocol itself was verified by the RTL simulation and on the hardware (@sec-rtl-verification, @sec-hw-communication).
+2. **No cut-through.** Both nodes receive and show the same values. On the hardware, GM1 and GM2 show different colours, because each node keeps its own part of the packet (@fig-cutthrough).
+3. **Different time scale.** The serial line of the model runs 1000 times slower and the PWM counter 50 times slower than the hardware. The PWM frequency of the model, 15.26 Hz, is therefore not the 762.94 Hz of the implemented design. The time scales were chosen so that the waveforms can be seen.
+4. **No bit-exact comparison with the RTL.** The only automatic check in the script is that MATLAB packs and unpacks the frame in the same way. The receiver of the model was not compared bit by bit with the Verilog receiver. The real verification of the design is the simulation in @sec-rtl-verification and the hardware tests in @sec-hardware.
+5. **Simple receiver.** The receiver does not check the stop bit, so a framing error is accepted as valid data. It has no timeout, so a frame that stops early can be completed by later changes on the line and reported as valid. It has no noise filter, so a short glitch on the idle line can start a false frame. A majority vote over three of the four samples of a bit would solve the last point.
+6. **Thin timing margin.** With four samples per bit, the receiver synchronises only on the start bit and then counts 258 samples without correction. The clocks of transmitter and receiver may therefore differ by less than half a bit over the whole frame, which is about 0.78 %. The implemented design avoids this problem, because it uses 50 clock cycles per bit and synchronises again on the start bit of every 11-bit word.
+
+These limits do not affect the results of the thesis, because the implemented design follows Flexlink and was verified separately in simulation and on the hardware. They are, however, the points to improve if the model is used again, for example as a reference for a later ASIC design.

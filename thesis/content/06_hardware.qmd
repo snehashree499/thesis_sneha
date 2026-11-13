@@ -1,6 +1,6 @@
 # Hardware Implementation and Validation {#sec-hardware}
 
-This chapter shows how Flexlink node from @sec-rtl works on real hardware. The same logic was loaded into two GateMate evaluation boards, which were connected as a short daisy chain. A PC acted as the *controller* and sent Flexlink packets to the GateMates. The serial downlink signals were checked with the PC program and the PWM outputs were tested with LEDs and with an oscilloscope.
+This chapter shows how the Flexlink node from @sec-rtl works on real hardware. The same logic was loaded into two GateMate evaluation boards, which were connected as a short daisy chain. A PC acted as the *controller* and sent Flexlink packets to the GateMates. The serial downlink signals were checked with the PC program and the PWM outputs were tested with LEDs and with an oscilloscope.
 
 The chapter first describes the test setup (@sec-hw-setup), the implementation flow (@sec-hw-flow) and the implementation results (@sec-hw-results). It then explains the PC test program (@sec-hw-pc-program) and presents the tests in the order of communication (@sec-hw-communication), forwarding in the chain (@sec-hw-chain), PWM generation (@sec-hw-pwm) and the driver stage (@sec-hw-driver). @sec-hw-robustness lists the tests with wrong or broken packets, and @sec-problems describes the problems that came up during the work and how they were solved.
 
@@ -15,9 +15,9 @@ The test setup consists of a PC, a USB-to-TTL serial adapter, two GateMate evalu
 |:------------------------|:---------------------------------------------------|:---------------------------------------------------|
 | FPGA board GM1          | GateMate FPGA Evaluation Board, serial E1-32A0090  | first node in the chain                            |
 | FPGA board GM2          | GateMate FPGA Evaluation Board, serial E1-32A0179  | second (last) node in the chain                    |
-| Serial adapter          | CP2104 USB-to-TTL adapter, port COM3               | connects the PC to GM1 at 1 MBaud                  |
+| Serial adapter          | CP2104 USB-to-TTL adapter, port COM3 [@silabs_cp2104] | connects the PC to GM1 at 1 MBaud               |
 | PC                      | Windows PC, Python with pySerial [@pyserial]       | acts as master, runs the build and the test program|
-| Oscilloscope            | PicoScope 4444, 4 channels, 12-bit, 20 MHz bandwidth [TODO: cite datasheet] | serial signals and PWM output |
+| Oscilloscope            | PicoScope 4444, 4 channels, 12-bit, 20 MHz bandwidth [@pico_4444_datasheet] | serial signals and PWM output |
 | LED driver stage                | BS170 N-channel MOSFETs on a breadboard [@onsemi_bs170] | switch the external LEDs (@sec-hw-driver)     |
 | LEDs                    | four single 5 mm LEDs, red, green, blue and white  | one RGBW segment                                   |
 | Power supply            | DC 12V         | supply of the LED driver stage                     |
@@ -60,17 +60,17 @@ openFPGALoader -b gatemate_evb_jtag --usb-serial-num E1-32A0179 flexlink_node.bi
 
 The flow has four steps.
 
-1. **Synthesis.** *Yosys* reads the Verilog file and maps the design to the logic cells of the GateMate. The result is a netlist in JSON format.
+1. **Synthesis.** *Yosys* reads the Verilog file and maps the design to the logic cells of the GateMate. The result is a netlist in JSON format [@shah2019]. 
 2. **Place and route.** *nextpnr-himbaechel* places the cells on the chip, connects them and checks the timing. It also writes the report `utilisation.json`, which is used in @sec-hw-results.
 3. **Bitstream.** *gmpack* turns the result of place and route into the logic file `flexlink_node.bit`.
-4. **Programming.** *openFPGALoader* loads the logic into the FPGA over JTAG.
-
-The design is built **once**, and the same logic is then loaded into both boards. Both boards stay connected to the PC at the same time, and openFPGALoader selects each board by the serial number of its USB interface. The logic is loaded into the configuration memory (SRAM) of the FPGA at a JTAG clock of 6 MHz. 
+4. **Programming.** *openFPGALoader* loads the logic into the FPGA over JTAG [@openfpgaloader].
+   
+The design is built **once**, and the same logic is then loaded into both boards. Both boards stay connected to the PC at the same time, and openFPGALoader selects each board by the serial number of its USB interface. The logic is written into the configuration latches of the FPGA over JTAG [@cologne_ds1001], at a JTAG clock of 6 MHz. 
 
 This memory is *volatile*, so the FPGA loses its configuration when the board is switched off and has to be programmed again after every power-up.
 
 
-The connection between the signal names in the Verilog code and the physical pins is made in the **constraint file** `flexlink_node.ccf`. @tbl-pins lists the pins and the settings used.
+The connection between the signal names in the Verilog code and the physical pins is made in the **constraint file** `flexlink_node.ccf`. @tbl-pins lists the pins and the settings used, and the complete file is given in @sec-app-ccf.
 
 | **Signal**       | **Pin (bank)** | **Settings**                         | **Reason**                                       |
 |:-----------------|:---------------|:-------------------------------------|:-------------------------------------------------|
@@ -84,17 +84,17 @@ The connection between the signal names in the Verilog code and the physical pin
 
 : Pin assignment and I/O settings from the constraint file {#tbl-pins}
 
-The *Schmitt trigger* gives the input a small hysteresis, so that slow or noisy edges do not cause several switching events. The *pull-up* resistor is important for the open input `dn_rx` of the last node, as explained in @sec-hw-setup.
+The GPIO cells of the GateMate offer these options for each pin [@cologne_ds1001]. The *Schmitt trigger* gives the input a small hysteresis, so that slow or noisy edges do not cause several switching events. The *pull-up* resistor is important for the open input `dn_rx` of the last node, as explained in @sec-hw-setup.
 
 To make the results reproducible, @tbl-versions lists the tool versions and the version of the source code that were used for the final build.
 
 | **Item**                 | **Version**                                            |
 |:-------------------------|:-------------------------------------------------------|
-| OSS CAD Suite            | [TODO: release date, e.g. from the folder name]        |
+| OSS CAD Suite            | 20260920        |
 | Yosys                    | 0.69+75 (git f0b945f63)                                |
 | nextpnr-himbaechel       | 0.11.1-30 (git 3e53a0bf)                               |
 | openFPGALoader           | 1.1.1                                                  |
-| Source code              | Git commit [TODO: commit ID] in `FlexLink_Node_v1`     |
+| Source code              | Git commit 4243dc6 in `FlexLink_Node_v1`     |
 
 : Tool versions and source code version of the final build {#tbl-versions}
 
@@ -105,7 +105,7 @@ After place and route, nextpnr reports how many resources of the FPGA the design
 
 | **Resource**                  | **Used** | **Available** | **Utilisation** |
 |:------------------------------|---------:|--------------:|----------------:|
-| CPE logic (`CPE_LT`)          | 1,077    | 40,960        | 2.6 %           |
+| CPE logic (`CPE_LT`)          | 788      | 40,960        | 1.9 %           |
 | CPE flip-flops (`CPE_FF`)     | 493      | 40,960        | 1.2 %           |
 | General-purpose I/O (`GPIO`)  | 18       | 162           | 11.1 %          |
 | PLL                           | 1        | 4             | 25 %            |
@@ -120,15 +120,15 @@ The "available" numbers in the table are twice the 20,480 CPEs of the CCGM1A1. E
 For the timing, nextpnr reports the following values for the system clock `clk_sys`:
 
 - required frequency (constraint): **50 MHz**, which is a clock period of 20 ns (@eq-clock-period),
-- achieved maximum frequency: **69.6 MHz**, which is a longest path of about 14.4 ns. <!-- TODO: this fmax is from the earlier build; replace it with the fmax line of the new build -->
+- achieved maximum frequency: **68.8 MHz**, which is a longest path of about 14.5 ns. 
 
-The design therefore meets its timing with a margin, or *slack*, of about 20 ns − 14.4 ns ≈ **5.6 ns** per clock cycle. The longest path, the *critical path*, starts at the read pointer of the downlink FIFO and runs through the subtraction `wp - rp` that checks whether the FIFO is full. Most of the delay on this path is caused by the routing between the cells and not by the logic itself. A higher system clock is not needed, because 50 MHz already gives the required PWM frequency and 50 clock cycles per UART bit (@sec-design-principles).
+The design therefore meets its timing with a margin, or *slack*, of about 20 ns − 14.5 ns ≈ **5.5 ns** per clock cycle. The longest path, the *critical path*, starts at the flip-flop that holds bit 8 of the received word in the uplink receiver, which is the bit that marks a control word. From there it runs through four logic levels of the decoder to the enable input of a register. Most of the delay on this path, 11.3 ns of 14.5 ns, is caused by the routing between the cells and not by the logic itself. A higher system clock is not needed, because 50 MHz already gives the required PWM frequency and 50 clock cycles per UART bit (@sec-design-principles).
 
 ## PC Test Program {#sec-hw-pc-program}
 
-In the final AES system, the master is a microcontroller. In this thesis, a **PC with a short Python program** takes this role. The program `flexlink_pc_test.py` uses the pySerial library [@pyserial] to send the packets through the USB-TTL adapter and to read the answers. The full program is given in <!--[TODO: appendix reference]. -->
+In the final AES system, the master is a microcontroller. In this thesis, a **PC with a short Python program** takes this role. The program `flexlink_pc_test.py` uses the pySerial library [@pyserial] to send the packets through the USB-TTL adapter and to read the answers. The full program is given in @sec-app-pc.
 
-A normal PC serial port sends **8 data bits**, but a Flexlink word has **9 bits** (@sec-9bit-uart). The program solves this with the *parity bit*. A UART frame with parity has one extra bit after the data bits, which is exactly the place of the 9th bit. pySerial can set this bit to a fixed value:
+A normal PC serial port sends **8 data bits**, but a Flexlink word has **9 bits** (@sec-9bit-uart). The program solves this with the *parity bit*. A UART frame with parity has one extra bit after the data bits, which is exactly the place of the 9th bit. pySerial can set this bit to a fixed value [@pyserial]: 
 
 - *mark parity*: the parity bit is always 1, used for SOP and EOP words,
 - *space parity*: the parity bit is always 0, used for data words.
@@ -190,8 +190,29 @@ Before the real LED packet, the program sends a short **broken packet**. It cons
 @fig-hw-decoded shows the decoded words on the oscilloscope. In the Count Segments packet, GM1 receives the count value 00, takes it as its ID and forwards the value 01, which GM2 takes as its ID. In the LED packet, only the eight data bytes for GM2 appear on the line from GM1 to GM2. On the line to the PC, GM1 first sends its own answer and then the answer of GM2 without a pause, so the eight answer words of the LED packet take 88 µs. The capture also confirms the bit timing. One word takes **11 µs**, which is 11 bits (start bit, nine data bits, stop bit) at 1 µs per bit. A count answer with three words takes 33 µs, and an LED answer with four words takes 44 µs. Every packet ends with the EOP 0x176, and the words 0x160, 0x100, 0x180, 0x1B0 and 0x176 have the 9th bit set, so the decoder shows them as values above 0xFF.
 
 
-<!-- TODO figure: PicoScope serial decoder table, one decoder per line, with a column that names the line (PC -> GM1, GM1 -> PC) -->
-![Decoded Flexlink words on the uplink (PC to GM1) and the downlink (GM1 to PC) for the Count Segments packet and the LED data packet.](images/ch6_decoded_packets.png){#fig-hw-decoded width=100%}
+::: {#fig-hw-decoded layout-nrow=2}
+
+![Count Segments packet (buffer 1).](images/ch6_decoded_count.png){#fig-hw-decoded-count width=100%}
+
+![LED data packet (buffer 2).](images/ch6_decoded_led.png){#fig-hw-decoded-led width=100%}
+
+Decoded Flexlink words on the four lines at GM1 (PicoScope 7 image exported with Save as PNG, capture `LedData_Valid`; the decoded words below the traces come from the CSV export of the PicoScope serial decoder). The values are 9-bit words in hexadecimal. Words above 0xFF are control words.
+:::
+
+**Data rate.** The decoder can only show correct words if the data rate on the line matches its setting of 1 MBaud. The data rate can also be checked directly. When a node sends several words one after another, as in its answers, the time from the start bit of one word to the start bit of the next word is the length of one word. The transmitter sends 11 bits of 50 clock cycles each and starts the next word two clock cycles after it becomes free, so one word takes
+
+$$
+T_\text{word} = (11 \cdot 50 + 2) \cdot T_\text{clk} = 552 \cdot 20\ \text{ns} = 11.04\ \mu\text{s}
+$$ {#eq-hw-word-time}
+
+In the decoder data of all captures, 144 such pairs of words were found. Their distance lies between 11.0 µs and 11.1 µs, with a mean value of **11.04 µs**, which is exactly the value of @eq-hw-word-time. Without the two clock cycles between the words, the bit time is
+
+$$
+T_\text{bit} = \frac{11.04\ \mu\text{s} - 2 \cdot 20\ \text{ns}}{11} = 1.00\ \mu\text{s}
+\quad\Rightarrow\quad \frac{1}{T_\text{bit}} = 1\ \text{MBaud}
+$$
+
+The nodes therefore send at the data rate required by Flexlink (R8 in @tbl-requirements).
 
 **Result: PASS.** The nodes take their ID from the Count Segments packet, take only their own LED data, and send complete answers in the right order. The broken packet `100 20 30` before the real LED packet did not cause any wrong values or extra answers.
 
@@ -210,11 +231,31 @@ $$ {#eq-fwd-delay}
 
 where $T_\text{bit} = 1\ \mu\text{s}$ is the bit time, $T_\text{clk} = 20\ \text{ns}$ is the clock period and $n$ is the number of clock cycles of internal processing. In the simulation of the final code, the start bit of the first forwarded word leaves GM1 **10.65 µs** after the start bit of the same word arrived. This means $n \approx 7.5$ clock cycles, or about 0.15 µs, in addition to the 10.5 µs of the receiver.
 
-**Measured result.** @fig-hw-forwarding shows the LED SOP 0x100 on both sides of GM1. The start bit of the forwarded word begins **10.7 µs** after the start bit of the received word. The same delay was evaluated with a short Python script from the exported data, for all 96 forwarded words in the captures recorded with a sample interval of 0.1 µs. It lies between 10.61 µs and 10.72 µs, with a mean value of **10.69 µs**. This agrees with the simulated value of 10.65 µs within one sample interval of the oscilloscope. The answers show the same timing. GM1 starts its answer 10.7 µs after the start of the EOP, and GM2 does the same.
+**Measured result.** @fig-hw-forwarding shows the LED SOP 0x100 on both sides of GM1. The start bit of the forwarded word begins **10.7 µs** after the start bit of the received word (rulers: 10.72 µs, read to about ±0.1 µs, the sample interval of the capture). The same delay was evaluated with a short Python script from the exported data, for all 96 forwarded words in the captures recorded with a sample interval of 0.1 µs. It lies between 10.61 µs and 10.72 µs, with a mean value of **10.69 µs**. This agrees with the simulated value of 10.65 µs within one sample interval of the oscilloscope. The answers show the same timing. GM1 starts its answer 10.7 µs after the start of the EOP, and GM2 does the same.
 
 
-<!-- TODO figure: D4 capture, channel A = GM1 pin 1, channel B = GM1 pin 3, rulers on both start bits -->
-![Forwarding delay of GM1. Channel A shows a word arriving at GM1 (pin 1), channel B shows the same word leaving GM1 towards GM2 (pin 3). The rulers mark the two start bits.](images/ch6_forwarding_delay.png){#fig-hw-forwarding width=100%}
+![Forwarding delay of GM1 for the SOP word 0x100 (PicoScope 7, exported with Save as PNG, capture `LedData_Valid`, buffer 2). Channel A (blue) is the word arriving at GM1 on pin 1. Channel C (green) is the same word leaving GM1 towards GM2 on pin 3. Ruler 1 is on the falling edge of the start bit on channel A, ruler 2 on the falling edge of the start bit on channel C. The difference is 10.72 µs.](images/ch6_forwarding_delay.png){#fig-hw-forwarding width=100%}
+
+@tbl-hw-timing lists further time differences that the PicoScope decoder shows in the capture `LedData_Valid`. The absolute times of the words depend on when the PC sends them, so only the differences between two lines describe the behaviour of the nodes.
+
+| **Compared times**                                  | **Count packet** | **LED packet**  | **Meaning**                                       |
+|:----------------------------------------------------|-----------------:|----------------:|:--------------------------------------------------|
+| Same word on A and on C                             | 10.7 µs          | 10.7 µs         | cut-through forwarding in GM1                     |
+| EOP on A to the first answer word of GM1 on B       | 10.7 µs          | 10.7 µs         | GM1 answers directly after the EOP                |
+| EOP on C to the first answer word of GM2 on D       | 10.7 µs          | 10.7 µs         | GM2 has the same timing as GM1                    |
+| Answer of GM2 on D to the same answer on B          | 22.4 µs          | 33.5 µs         | GM2's answer waits in the FIFO of GM1             |
+| Words on B                                          | 6, no gap        | 8, no gap       | both answers are sent back to back                |
+
+: Time differences between the four lines at GM1, from the PicoScope serial decoder (capture `LedData_Valid`) {#tbl-hw-timing}
+
+GM2 forwards and answers with the same delay of 10.7 µs as GM1. This is expected, because both boards run the same bitstream (R6 in @tbl-requirements). The waiting time of GM2's answer in GM1 can also be calculated. GM1's own count answer has three words and its LED answer four words. GM2's answer arrives 10.7 µs after GM1 has started its own answer, so it has to wait
+
+$$
+t_\text{wait,count} = 3 \cdot 11\ \mu\text{s} - 10.7\ \mu\text{s} \approx 22.3\ \mu\text{s}, \qquad
+t_\text{wait,LED} = 4 \cdot 11\ \mu\text{s} - 10.7\ \mu\text{s} \approx 33.3\ \mu\text{s}
+$$
+
+The measured values of 22.4 µs and 33.5 µs agree with this within the sample interval of 0.1 µs. GM1 therefore always sends its own answer first and then the answer of GM2, so the answers reach the master in the order of the chain (R9 and R18 in @tbl-requirements, @sec-downlink).
 
 **Result for 25 segments.** With one RGBW segment per node, an LED packet for 25 segments has 1 SOP, 25 × 8 = 200 data words and 1 EOP, so 202 words. With @eq-total-delay and the measured delay of 10.69 µs per node, the last of 25 nodes has received its data after:
 
@@ -229,7 +270,7 @@ This is about **one tenth of the 25 ms limit**, and the measured delay gives the
 
 **Goal.** These measurements check the PWM generator of @sec-pwm-generator on the real hardware. They answer three questions. Is the PWM frequency correct? Does the on-time follow the brightness value with a step of one clock cycle? And do the special values 0 and 65,535 give a signal that is always off or always on?
 
-**Setup.** The red channel of GM1 was set to one value at a time with the PC program, and the output `seg1` (pin 7) was measured with channel A of the oscilloscope. For each value, the on-time was measured with the automatic pulse width measurement of PicoScope or with two rulers. [TODO: state whether the driver stage was connected during the measurement.]
+**Setup.** The red channel of GM1 was set to one value at a time with the PC program, and the output `seg1` (pin 7) was measured with channel A of the oscilloscope. For each value, the on-time was measured with the automatic pulse width measurement of PicoScope or with two rulers. The driver stage of @sec-hw-driver was connected during these measurements.
 
 **Expected result.** The counter runs at 50 MHz and counts from 0 to 65,535, so the PWM period and frequency are:
 
@@ -246,11 +287,17 @@ $$ {#eq-pwm-on-time}
 
 and the duty cycle is $D = v / 65{,}536$.
 
-**Measured result.** The measured frequency is **763.0 Hz** (@fig-hw-pwm-freq), which matches the expected 762.9 Hz within the resolution of the measurement. @tbl-pwm-results compares the expected and the measured on-times.
+**Measured result.** The measured frequency is **763.0 Hz** (@fig-hw-pwm-freq), which matches the expected 762.9 Hz within the resolution of the measurement. Because one PWM period has exactly 65,536 clock cycles, the measured frequency also gives the system clock:
+
+$$
+f_\text{clk} = 65{,}536 \cdot f_\text{PWM} = 65{,}536 \cdot 763.0\ \text{Hz} \approx 50.00\ \text{MHz}
+$$
+
+This confirms that the PLL generates the planned 50 MHz. With 50 clock cycles per bit, this clock gives the bit time of 1 µs that was found in the serial captures (@eq-hw-word-time). The two measurements are independent of each other and lead to the same clock. @tbl-pwm-results compares the expected and the measured on-times.
 
 | **Value $v$** | **Duty cycle $D$** | **Expected $t_\text{on}$** | **Measured $t_\text{on}$** | **Deviation** | **Method**        |
 |--------------:|-------------------:|---------------------------:|---------------------------:|--------------:|:------------------|
-| 0             | 0 %                | always off                 | [TODO: capture]            | —             | —                 |
+| 0             | 0 %                | always off                 | always off                 | —             | observed          |
 | 1             | 0.0015 %           | 20 ns                      | 20.15 ns                   | +0.8 %        | rulers            |
 | 10            | 0.015 %            | 200 ns                     | 199.9 ns                   | −0.05 %       | rulers            |
 | 66            | 0.10 %             | 1.320 µs                   | 1.318 µs                   | −0.15 %       | rulers            |
@@ -280,20 +327,11 @@ PWM output `seg1` of GM1 for different brightness values, measured with the Pico
 
 Two more observations are visible in the captures.
 
-1. **Short pulses look rounded.** The 20 ns pulse in @fig-hw-pwm-1 does not look like a rectangle and reaches only about 0.95 V. The oscilloscope has a bandwidth of 20 MHz. A common rule of thumb for the rise time of an oscilloscope is $t_r \approx 0.35 / \text{bandwidth} = 0.35 / 20\ \text{MHz} \approx 17.5\ \text{ns}$ [TODO: citation, e.g. a Tektronix or Keysight application note], which is almost as long as the pulse itself. The rounded shape is therefore a limit of the measurement, not of the FPGA output.
-2. **The high level is lower than expected.** For long pulses, the high level of the PWM
-   output is only about **1.3 V**, while the serial outputs reach about 2.2 V. Right after
-   each rising edge, the level is higher (about 1.9 V) and then falls within about 1 µs.
-   The gate of a MOSFET draws no steady current, so the gate of the BS170 alone cannot
-   explain a lasting drop of this size. [TODO: measure `seg1` once with and once without
-   the driver stage and write the cause here.] The level is important for the driver
-   stage. The gate threshold voltage of the BS170 lies between 0.8 V and 3.0 V, with a
-   typical value of 2.0 V [@onsemi_bs170]. A gate voltage of only 1.3 V would therefore
-   switch most BS170 parts on only weakly or not at all (@sec-hw-driver).
+1. **Short pulses look rounded.** The 20 ns pulse in @fig-hw-pwm-1 does not look like a rectangle and reaches only about 0.95 V. The oscilloscope has a bandwidth of 20 MHz. A common rule of thumb for the rise time of an oscilloscope is $t_r \approx 0.35 / \text{bandwidth} = 0.35 / 20\ \text{MHz} \approx 17.5\ \text{ns}$ [@keysight_risetime; @pico_a3000_guide], which is almost as long as the pulse itself. The rounded shape is therefore a limit of the measurement, not of the FPGA output.
+2. **The high level is lower than expected.** For long pulses, the high level of the PWM output is only about **1.3 V**. Right after each rising edge, the level is higher (about 1.9 V) and then falls within about 1 µs. To find the cause, `seg1` was measured once without and once with the driver stage. **Without the driver stage, the high level was 2.1 V. With the driver stage connected, it fell to about 1.3 V.** The gate of the MOSFET draws no steady current, so the only steady load is the 10 kΩ pull-down resistor, which draws only about 1.3 V / 10.1 kΩ ≈ 0.13 mA. A drop of 0.8 V at such a small current means that the output has a high internal resistance. The most likely reason is the bus switch between the FPGA and the Pmod connector (@sec-gatemate-board). The level is important for the driver stage. The gate threshold voltage of the BS170 lies between 0.8 V and 3.0 V, with a typical value of 2.0 V [@onsemi_bs170]. The parts used in the prototype switch on at 1.3 V, but this is below the typical threshold, so it is not guaranteed for every part (@sec-hw-driver).
 
-**Result.** The PWM generator works as designed. The frequency is 763 Hz, which is above the required 400 Hz, the step size is one clock cycle of 20 ns, and the values 65,535 and [TODO: 0] give an output that is always on and always off.
+**Result.** The PWM generator works as designed. The frequency is 763 Hz, which is above the 400 Hz of the Bronze level and the 600 Hz of the Silver level, but below the 1 kHz of the Gold level (@tbl-requirements). The step size is one clock cycle of 20 ns, and the values 65,535 and 0 give an output that is always on and always off.
 
-<!-- Optional figure, if space is left: the capture with all four channels together (from PC-GateMate1-GateMate2__PWM-Frequency.psdata). It shows that all channels rise at the same time, because they share one counter (@sec-pwm-generator). -->
 
 ## Driver Stage Measurements {#sec-hw-driver}
 
@@ -302,17 +340,21 @@ first test, external LEDs connected directly to the segment outputs did not ligh
 especially the blue and the white LED, which need a forward voltage of about 3 V or more
 (@sec-led-basics). Each segment output therefore drives a **BS170 N-channel MOSFET** as a
 *low-side switch*, as described in @sec-low-side-switching. The LED and its series
-resistor are connected between the LED supply and the drain, and the source is connected,to ground. The FPGA output drives the gate. @fig-hw-driver shows the circuit of one channel as built, and @tbl-driver-values lists the component values.
+resistor are connected between the LED supply and the drain, and the source is connected to ground. The FPGA output drives the gate. @fig-hw-driver shows the circuit of one channel as built, and @tbl-driver-values lists the component values.
+
+The series resistor was sized with @eq-series-resistor for an LED current of about 20 mA. With the 12 V supply, this gives 495 Ω for the red LED, 440 Ω for the green and the blue LED and 430 Ω for the white LED (@tbl-driver-values). These values lie close together, so one resistor of **470 Ω** was used for all four channels. The resulting currents lie between 18.3 mA and 21.1 mA. The voltage across the MOSFET is neglected in this calculation, so the real current is somewhat lower.
 
 ![Driver stage of one channel as built on the breadboard. The FPGA output drives the gate of the BS170 through 100 Ω, and the 10 kΩ resistor keeps the gate low when the pin is not driven. The series resistor $R$ is 500 Ω for red, 450 Ω for green and white, and 400 Ω for blue.](images/ch6_driver_stage){#fig-hw-driver width=55%}
 
-| **Part / value**                          | **Red** | **Green** | **Blue** | **White** |
-|:------------------------------------------|:--------|:----------|:---------|:----------|
-| LED supply $V_S$                          | 12 V    | 12 V      | 12 V     | 12 V      |
-| Series resistor $R$                       | 500 Ω   | 450 Ω     | 400 Ω    | 450 Ω     |
-| Gate resistor                             | 100 Ω   | 100 Ω     | 100 Ω    | 100 Ω     |
-| Gate pull-down resistor                   | 10 kΩ   | 10 kΩ     | 10 kΩ    | 10 kΩ     |
-| LED current (calculated with @eq-series-resistor) | [TODO: needs $V_F$] | 19.1 mA | 21.5 mA | [TODO: needs $V_F$] |
+| **Part / value**                                  | **Red**       | **Green**     | **Blue**      | **White**     |
+|:--------------------------------------------------|:--------------|:--------------|:--------------|:--------------|
+| LED supply $V_S$                                  | 12 V          | 12 V          | 12 V          | 12 V          |
+| Typical forward voltage $V_F$                     | 2.1 V [@avago_hlmp_hx64] | 3.2 V [@avago_hlmp_hx64] | 3.2 V [@avago_hlmp_hx64] | 3.4 V [@maxim2004] |
+| Resistor for 20 mA, $(V_S - V_F) / 20\ \text{mA}$ | 495 Ω         | 440 Ω         | 440 Ω         | 430 Ω         |
+| Series resistor $R$ used                          | 470 Ω         | 470 Ω         | 470 Ω         | 470 Ω         |
+| LED current with 470 Ω (@eq-series-resistor)      | 21.1 mA       | 18.7 mA       | 18.7 mA       | 18.3 mA       |
+| Gate resistor                                     | 100 Ω         | 100 Ω         | 100 Ω         | 100 Ω         |
+| Gate pull-down resistor                           | 10 kΩ         | 10 kΩ         | 10 kΩ         | 10 kΩ         |
 
 : Component values of the driver stage {#tbl-driver-values}
 
@@ -321,18 +363,10 @@ gate voltage and needs no steady gate current, so the FPGA output only has to ch
 small gate capacitance of at most 60 pF [@onsemi_bs170]. It can carry up to 500 mA, which
 is far more than the LED current. Its weak point in this setup is the low gate voltage.
 The datasheet gives the on-resistance only for a gate voltage of 10 V, and the threshold
-voltage can be anywhere from 0.8 V to 3.0 V [@onsemi_bs170]. With a gate voltage of about
-2.5 V, a typical part (threshold 2.0 V) is switched on, but only partly, and a part with a
-threshold close to 3.0 V would not switch on. The prototype therefore works with the parts
+voltage can be anywhere from 0.8 V to 3.0 V [@onsemi_bs170]. With the driver stage connected, the gate voltage is only about 1.3 V (@sec-hw-pwm). This is below the typical threshold of 2.0 V, and a part with a threshold close to 3.0 V would not switch on at all. The prototype therefore works with the parts
 that were used, but this operating point is **not guaranteed by the datasheet**.
 
-**Measured result.** [TODO: two short measurements are enough. (1) The drain voltage of one
-MOSFET with the oscilloscope at a value of about 50 %. When the MOSFET is on, a low drain
-voltage (well below 1 V) shows that it is switched on well. (2) The LED current at the
-value 65,535, measured with a multimeter in series with the LED. Write both values here
-and compare the current with the calculated value in @tbl-driver-values.] With the driver
-stage, all four external LEDs light up, and their brightness changes with the values sent
-by the PC.
+**Measured result.** The drain voltage and the LED current were not measured, so the currents in @tbl-driver-values are calculated values. With the driver stage, all four external LEDs light up, and their brightness changes with the values sent by the PC.
 
 The driver stage is a simple test circuit for the prototype. It sets the LED current
 with a fixed resistor and does not regulate it. In a product, the gate would be driven
@@ -345,37 +379,203 @@ thesis (@sec-requirements).
 
 **Goal.** The tests so far used correct packets. The tests in this section check how the nodes react to wrong or broken packets, to unusual values and to faults in the wiring. Each test changes **one** thing in the PC test program or in the setup, runs the program and compares the answers with the expected answers. After the test, the change is undone.
 
-**Expected result.** The expected answers in @tbl-robustness were found by simulating each case with the final code. The rules behind them are the design rules from @sec-design-principles. A node changes its LED levels only after a complete LED packet, it changes its ID only after a Count Segments packet with exactly one data byte, and it drops an open packet when a new SOP arrives. The tests of group B were run one after another. The LED packet sent after each test shows whether a node changed its ID.
+The tests are numbered as in the test plan. Group A uses correct packets, group B checks Count Segments packets, group C checks LED data packets, and group D covers the timing and the wiring. @tbl-robustness lists only the tests that were measured on the hardware. The missing numbers belong to tests of the plan that were not measured (@sec-eval-limitations).
+
+**Expected result.** The expected answers in @tbl-robustness were found by simulating each case with the final code. The rules behind them are the design rules from @sec-design-principles. A node changes its LED levels only after a complete LED packet, it changes its ID only after a Count Segments packet with exactly one data byte, and it drops an open packet when a new SOP arrives. The tests of group B were run one after another. The LED packet sent after each test shows whether a node changed its ID. In the captures, the answers to this LED packet carry the IDs 0xFE and 0xFF after test B2, and the IDs 0xFF and 0xFF after test B1 and after all later tests of group B.
 
 
-| **No.** | **Test**                          | **Packet sent by the PC**                       | **Expected answer (simulation)**  | **Measured on GM1 pin 2**                          | **Result** |
+| **No.** | **Test**                          | **Packet sent by the PC**                       | **Expected answer (simulation)**  | **Measured at GM1**                                | **Result** |
 |:--------|:----------------------------------|:------------------------------------------------|:----------------------------------|:---------------------------------------------------|:-----------|
-| A1      | Normal count                      | `160 00 176`                                    | `1B0 00 176 1B0 01 176`           | `1B0 00 176 1B0 01 176`                            | PASS       |
-| A2      | Normal LED data                   | `100` + 16 bytes + `176`                        | `180 00 28 176 180 01 28 176`     | `180 00 28 176 180 01 28 176`                      | PASS       |
-| B1      | Count value 0xFF                  | `160 FF 176`                                    | `1B0 FF 176`, GM2 silent          | `1B0 FF 176`, GM2 silent                           | PASS       |
-| B2      | Count value 0xFE                  | `160 FE 176`                                    | `1B0 FE 176 1B0 FF 176`           | `1B0 FE 176 1B0 FF 176`                            | PASS       |
-| B3      | Two count values                  | `160 00 05 176`                                 | no answer, IDs unchanged          | [TODO: export capture]                             | [TODO]     |
-| B4      | No count value                    | `160 176`                                       | no answer, IDs unchanged          | no answer, IDs unchanged                           | PASS       |
-| B5      | Control word as count value       | `160 150 176`                                   | no answer, IDs unchanged          | no answer, IDs unchanged                           | PASS       |
-| B7      | Count without EOP                 | `160 00`, then the next packet                  | no answer, IDs unchanged          | no answer, IDs unchanged                           | PASS       |
-| C1      | Data only for GM1                 | `100` + 8 bytes + `176`                         | `180 00 28 176`                   | `180 00 28 176`                                    | PASS       |
-| C2      | Unfinished packet before LED data | `100 20 30`, then `100` + 16 bytes + `176`      | `180 00 28 176 180 01 28 176`     | `180 00 28 176 180 01 28 176`                      | PASS       |
-| C5      | Twelve data bytes                 | `100` + 12 bytes + `176`                        | `180 00 28 176`                   | `180 00 28 176`                                    | PASS       |
-| C6      | Two data bytes                    | `100 FF FF 176`                                 | no answer                         | no answer                                          | PASS       |
-| C9      | Control word inside LED data      | `100 20 30 110` + 16 bytes + `176`              | no answer                         | no answer                                          | PASS       |
-| D4      | Forwarding delay                  | any forwarded word                              | 10.65 µs                          | 10.69 µs (mean of 96 words, 10.61–10.72 µs)        | PASS       |
+| A1      | Normal count                      | `160 00 176`                                    | `1B0 00 176 1B0 01 176`           | `1B0 00 176 1B0 01 176` (@fig-hw-cap-a)            | PASS       |
+| A2      | Normal LED data                   | `100` + 16 bytes + `176`                        | `180 00 28 176 180 01 28 176`     | `180 00 28 176 180 01 28 176`; GM2 gets bytes 9–16 (@fig-hw-cap-a) | PASS       |
+| B1      | Count value 0xFF                  | `160 FF 176`                                    | `1B0 FF 176`, GM2 silent          | `1B0 FF 176`, GM2 silent; 0xFF not forwarded; IDs after: FF, FF (@fig-hw-cap-b1) | PASS       |
+| B2      | Count value 0xFE                  | `160 FE 176`                                    | `1B0 FE 176 1B0 FF 176`           | `1B0 FE 176 1B0 FF 176`; GM1 forwards 0xFF; IDs after: FE, FF (@fig-hw-cap-b2) | PASS       |
+| B3      | Two count values                  | `160 00 04 176`                                 | no answer, IDs unchanged          | no answer; GM2 receives `160 01 04 176`; IDs after: FF, FF (@fig-hw-cap-b3) | PASS       |
+| B4      | No count value                    | `160 176`                                       | no answer, IDs unchanged          | no answer; IDs after: FF, FF (@fig-hw-cap-b4)       | PASS       |
+| B5      | Control word as count value       | `160 150 176`                                   | no answer, IDs unchanged          | no answer; 0x150 forwarded unchanged; IDs after: FF, FF (@fig-hw-cap-b5) | PASS       |
+| B7      | Count without EOP                 | `160 00`, then the next packet                  | no answer, IDs unchanged          | no answer; GM2 receives `160 01`; IDs after: FF, FF (@fig-hw-cap-b7) | PASS       |
+| C1      | Data only for GM1                 | `100` + 8 bytes + `176`                         | `180 00 28 176`                   | `180 00 28 176`; no data bytes forwarded (@fig-hw-cap-c1) | PASS       |
+| C2      | Unfinished packet before LED data | `100 20 30`, then `100` + 16 bytes + `176`      | `180 00 28 176 180 01 28 176`     | `180 00 28 176 180 01 28 176`; `20 30` not forwarded (@fig-hw-cap-c2) | PASS       |
+| C5      | Twelve data bytes                 | `100` + 12 bytes + `176`                        | `180 00 28 176`                   | `180 00 28 176`; 4 bytes forwarded to GM2 (@fig-hw-cap-c5) | PASS       |
+| C6      | Two data bytes                    | `100 FF FF 176`                                 | no answer                         | no answer; no data bytes forwarded (@fig-hw-cap-c6) | PASS       |
+| C9      | Control word inside LED data      | `100 20 30 110` + 16 bytes + `176`              | no answer                         | no answer; 0x110 and all later words forwarded (@fig-hw-cap-c9) | PASS       |
+| D4      | Forwarding delay                  | any forwarded word                              | 10.65 µs                          | 10.69 µs (mean of 96 words, 10.61–10.72 µs) (@fig-hw-forwarding) | PASS       |
 
 : Robustness tests with expected answers from simulation of the final code and answers measured with the oscilloscope on the hardware {#tbl-robustness}
 
+The oscilloscope captures of every test are shown in @sec-hw-test-captures.
 
 The tests show three types of behaviour.
 
-1. **Broken packets are ignored.** In tests B4, B5, B7, C6 and C9, the packet is incomplete, has the wrong length or contains a control word in the wrong place. No node changes its ID or its LED levels, and no node answers. The master can see from the missing answer that the packet did not arrive correctly.
-2. **Short LED packets update only the first nodes.** In tests C1 and C5, GM1 still receives its eight bytes and answers, while GM2 receives fewer than eight bytes, keeps its old values and stays silent. The master can see from the number of answers which nodes have taken the new data.
-3. **Some errors cannot be detected.** If a packet has the right format but the data are shifted by one value, GM2 takes the wrong bytes and still answers normally. Design v1 cannot detect this error, because the packet contains no checksum. This case was not tested on the hardware. A checksum is discussed as an extension in [TODO: reference to the outlook in Chapter 8].
+1. **Broken packets are ignored.** In tests B3, B4, B5, B7, C6 and C9, the packet is incomplete, has the wrong length or contains a control word in the wrong place. No node changes its ID or its LED levels, and no node answers. The master can see from the missing answer that the packet did not arrive correctly. The captures also show how the cut-through forwarding behaves in these cases. GM1 cannot know in advance that a packet is broken, so it passes the words on as they arrive: in B3 the count bytes, in B5 the control word 0x150 and in C9 the control word 0x110 together with all following data bytes reach GM2 (@fig-hw-cap-b3, @fig-hw-cap-b5, @fig-hw-cap-c9). GM2 applies the same rules, so it also discards the packet and stays silent.
+
+2. **Short LED packets update only the first nodes.** In tests C1 and C5, GM1 still receives its eight bytes and answers, while GM2 receives fewer than eight bytes, keeps its old values and stays silent. In C1, the line from GM1 to GM2 carries no data byte at all, and in C5 it carries only the last four bytes `27 10 61 A8` (@fig-hw-cap-c1, @fig-hw-cap-c5). The master can see from the number of answers which nodes have taken the new data.
+3. **Some errors cannot be detected.** If a packet has the right format but the data are shifted by one value, GM2 takes the wrong bytes and still answers normally. Design v1 cannot detect this error, because the packet contains no checksum. This case was not tested on the hardware. A checksum is discussed as an extension in @sec-outlook..
 
 
-Test B1 needs a short explanation. With the count value 0xFF, GM1 takes the ID 0xFF and answers, but it does **not** forward a count value, because 0xFF + 1 would wrap around to 0x00 and give a second node the ID 00. GM2 therefore receives a packet without a count value, keeps its old ID and does not answer. 0xFF is also the value that means "not counted yet", so 255 is the highest number of segments that can be counted with one byte. On the hardware, GM1 forwarded only the SOP 0x160 in this test, without the EOP. GM2 therefore received no count value and did not answer, which is the same result as in the simulation.
+Test B1 needs a short explanation. With the count value 0xFF, GM1 takes the ID 0xFF and answers, but it does **not** forward a count value, because 0xFF + 1 would wrap around to 0x00 and give a second node the ID 00. GM2 therefore receives a packet without a count value, keeps its old ID and does not answer. 0xFF is also the value that means "not counted yet", so 255 is the highest number of segments that can be counted with one byte. On the hardware, GM1 forwarded only the SOP 0x160 in this test, without the EOP. GM2 therefore received no count value and did not answer, which is the same result as in the simulation (@fig-hw-cap-b1).
+
+In test B3, GM1 forwarded the packet word by word, as cut-through forwarding requires, and replaced the first count value by 01. GM2 therefore received `160 01 04 176`. Neither node answered (@fig-hw-b3).
+In the LED packet sent after the test, both nodes answered with the ID 0xFF. These are the same IDs as after test B1 (@fig-hw-cap-b1). If a node had accepted the packet, GM1 would have the ID 00 and GM2 the ID 01. The packet with two count values therefore changed no ID.
+
+In test C2, the PC first sends the unfinished packet `100 20 30`. GM1 keeps the two bytes and does not forward them. When the next SOP 0x100 arrives, GM1 drops the open packet, forwards the new SOP to GM2 and then handles the new packet normally: it keeps the first eight data bytes, forwards the other eight, and both nodes answer (@fig-hw-cap-c2).
+
+In test C9, the control word 0x110 arrives in the middle of the LED data. GM1 ends the packet at this word and from then on forwards every word unchanged, including all 16 data bytes and the EOP. Neither node takes the data and neither answers (@fig-hw-cap-c9). Tests C2 and C9 were recorded with a time base of 2 ms/div, so the oscilloscope sampled at 5 MS/s instead of 10 MS/s. PicoScope then shows the note "sample rate may be too low" next to the decoders. With five samples per bit, the decoded values still agree with the values sent by the PC and with the other captures.
+
+::: {#fig-hw-b3 layout-nrow=2}
+
+![Whole packet in buffer 1. Words appear only on channel A (PC → GM1) and channel C (GM1 → GM2).](images/ch6_b3_graph.png){#fig-hw-b3-graph width=100%}
+
+![Count bytes: GM1 receives `000 004` and forwards `001 004`.](images/ch6_b3_zoom.png){#fig-hw-b3-zoom width=100%}
+
+Test B3, Count Segments packet with two count values (PicoScope 7, capture `CountSegmentsTwoBytes`, buffer 1). GM1 forwards the packet to GM2, but no node sends an answer.
+:::
+
+: Decoded words of test B3 (buffer 1), from the CSV export of the PicoScope serial decoder. Times are measured from the trigger. {#tbl-hw-b3-words}
+
+| Channel | Line | Words and start times |
+|---|---|---|
+| A | PC → GM1 | 160 (0.06 µs), 000 (1223.36 µs), 004 (1236.36 µs), 176 (2387.56 µs) |
+| C | GM1 → GM2 | 160 (10.76 µs), 001 (1234.06 µs), 004 (1247.06 µs), 176 (2398.26 µs) |
+| D | GM2 → GM1 | none |
+| B | GM1 → PC | none |
+
+## Oscilloscope Captures of the Tests {#sec-hw-test-captures}
+
+This section shows the PicoScope captures of each test in @tbl-robustness. All four lines were recorded at GM1: channel A (blue) is PC → GM1, channel B (red) is GM1 → PC, channel C (green) is GM1 → GM2 and channel D (yellow) is GM2 → GM1. Every image was exported from PicoScope 7 with Save as PNG, zoomed in to the part of the packet that shows the result of the test. The PNG export does not contain the decoder bars, so the decoded words are shown in four lanes below the traces (A, C, D, B). Their values and times come from the CSV export of the PicoScope serial decoder (UART, 1 MBd, 9 data bits). The footer of each image shows the capture time and the serial number of the oscilloscope. The overviews of each buffer are kept with the capture files.
+
+::: {#fig-hw-cap-a layout-ncol=2}
+
+![A1: answers to the count packet](images/tests/A1_A2_LedData_Valid/A1_2_zoom_count_answers_00_01.png){#fig-hw-cap-a-a}
+
+![A2: GM1 keeps 8 bytes and forwards 8](images/tests/A1_A2_LedData_Valid/A2_2_zoom_data_16bytes_in_8forwarded.png){#fig-hw-cap-a-b}
+
+![A2: answers to the LED packet](images/tests/A1_A2_LedData_Valid/A2_3_zoom_LED_answers_00_01.png){#fig-hw-cap-a-c}
+
+Tests A1 and A2, normal count and LED packet (capture `LedData_Valid`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b1 layout-ncol=2}
+
+![SOP 0x160 is forwarded](images/tests/B1_CountFF/B1_2_zoom_SOP_forwarded.png){#fig-hw-cap-b1-a}
+
+![count value 0xFF is not forwarded](images/tests/B1_CountFF/B1_3_zoom_countFF_not_forwarded.png){#fig-hw-cap-b1-b}
+
+![only GM1 answers](images/tests/B1_CountFF/B1_4_zoom_EOP_answer_GM1_only.png){#fig-hw-cap-b1-c}
+
+![next LED packet: both IDs 0xFF](images/tests/B1_CountFF/B1_6_zoom_buf2_answers_IDs_FF_FF.png){#fig-hw-cap-b1-d}
+
+Test B1, count value 0xFF (capture `CountSegmentsFF`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b2 layout-ncol=2}
+
+![GM1 takes 0xFE and forwards 0xFF](images/tests/B2_CountFE/B2_2_zoom_countFE_forwardedFF.png){#fig-hw-cap-b2-a}
+
+![both nodes answer](images/tests/B2_CountFE/B2_3_zoom_EOP_answers_FE_FF.png){#fig-hw-cap-b2-b}
+
+![next LED packet: IDs 0xFE and 0xFF](images/tests/B2_CountFE/B2_4_zoom_buf2_answers_IDs_FE_FF.png){#fig-hw-cap-b2-c}
+
+Test B2, count value 0xFE (capture `CountSegmentsFE`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b3 layout-ncol=2}
+
+![count bytes 00 04, forwarded as 01 04](images/tests/B3_TwoCountValues/B3_2_zoom_00_04_forwarded_01_04.png){#fig-hw-cap-b3-a}
+
+![no answer](images/tests/B3_TwoCountValues/B3_3_zoom_EOP_no_answer.png){#fig-hw-cap-b3-b}
+
+![next LED packet: IDs unchanged](images/tests/B3_TwoCountValues/B3_4_zoom_buf2_answers_IDs_unchanged.png){#fig-hw-cap-b3-c}
+
+Test B3, two count values (capture `CountSegmentsTwoBytes`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b4 layout-ncol=2}
+
+![packet 160 176](images/tests/B4_NoCountValue/B4_1_overview_buf1.png){#fig-hw-cap-b4-a}
+
+![no answer](images/tests/B4_NoCountValue/B4_2_zoom_EOP_no_answer.png){#fig-hw-cap-b4-b}
+
+![next LED packet: IDs unchanged](images/tests/B4_NoCountValue/B4_3_zoom_buf2_answers_IDs_unchanged.png){#fig-hw-cap-b4-c}
+
+Test B4, no count value (capture `CountSegmentsNoBytes`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b5 layout-ncol=2}
+
+![control word 0x150 is forwarded](images/tests/B5_ControlWordAsCount/B5_2_zoom_150_forwarded.png){#fig-hw-cap-b5-a}
+
+![no answer](images/tests/B5_ControlWordAsCount/B5_3_zoom_EOP_no_answer.png){#fig-hw-cap-b5-b}
+
+![next LED packet: IDs unchanged](images/tests/B5_ControlWordAsCount/B5_4_zoom_buf2_answers_IDs_unchanged.png){#fig-hw-cap-b5-c}
+
+Test B5, control word as count value (capture `CountSegmentsInvalidSopAsData`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-b7 layout-ncol=2}
+
+![count byte, then no EOP](images/tests/B7_CountWithoutEOP/B7_2_zoom_count00_forwarded01_no_EOP.png){#fig-hw-cap-b7-a}
+
+![next packet: IDs unchanged](images/tests/B7_CountWithoutEOP/B7_4_zoom_buf2_answers_IDs_unchanged.png){#fig-hw-cap-b7-b}
+
+Test B7, count packet without EOP (capture `CountSegmentsNoEopValidSop`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-c1 layout-ncol=2}
+
+
+![overview: SOP and EOP forwarded, the 8 bytes are kept](images/tests/C1_LedData_8Bytes/C1_1_overview_buf3.png){#fig-hw-cap-c1-o}
+
+![GM1 keeps all 8 bytes](images/tests/C1_LedData_8Bytes/C1_2_zoom_8bytes_kept_none_forwarded.png){#fig-hw-cap-c1-a}
+
+![only GM1 answers](images/tests/C1_LedData_8Bytes/C1_3_zoom_answer_GM1_only.png){#fig-hw-cap-c1-b}
+
+Test C1, data only for GM1 (capture `LedData_8Bytes`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-c2 layout-ncol=2}
+
+![unfinished packet 100 20 30](images/tests/C2_UnfinishedPacketThenNewSOP/C2_2_zoom_020_030_unfinished.png){#fig-hw-cap-c2-a}
+
+![new SOP: old packet dropped](images/tests/C2_UnfinishedPacketThenNewSOP/C2_3_zoom_new_SOP_100_forwarded.png){#fig-hw-cap-c2-b}
+
+![data of the new packet](images/tests/C2_UnfinishedPacketThenNewSOP/C2_4_zoom_data_16bytes_8forwarded.png){#fig-hw-cap-c2-c}
+
+![both nodes answer](images/tests/C2_UnfinishedPacketThenNewSOP/C2_5_zoom_answers_00_01.png){#fig-hw-cap-c2-d}
+
+Test C2, unfinished packet before LED data (capture `LedData_ValidLedSopAsDataAfterPrevData`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-c5 layout-ncol=2}
+
+![GM1 keeps 8 bytes, forwards 4](images/tests/C5_LedData_12Bytes/C5_2_zoom_12bytes_4forwarded.png){#fig-hw-cap-c5-a}
+
+![only GM1 answers](images/tests/C5_LedData_12Bytes/C5_3_zoom_answer_GM1_only.png){#fig-hw-cap-c5-b}
+
+Test C5, twelve data bytes (capture `LedData_12Bytes`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-c6 layout-ncol=2}
+
+![two bytes, nothing forwarded](images/tests/C6_LedData_2Bytes/C6_2_zoom_2bytes_not_forwarded.png){#fig-hw-cap-c6-a}
+
+![no answer](images/tests/C6_LedData_2Bytes/C6_3_zoom_EOP_no_answer.png){#fig-hw-cap-c6-b}
+
+Test C6, two data bytes (capture `LedData_2Bytes`). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
+
+::: {#fig-hw-cap-c9 layout-ncol=2}
+
+![first data bytes](images/tests/C9_ControlWordInLedData/C9_2_zoom_020_030_kept.png){#fig-hw-cap-c9-a}
+
+![control word 0x110 inside the data](images/tests/C9_ControlWordInLedData/C9_3_zoom_110_forwarded.png){#fig-hw-cap-c9-b}
+
+![the following bytes are forwarded](images/tests/C9_ControlWordInLedData/C9_4_zoom_16bytes_all_forwarded.png){#fig-hw-cap-c9-c}
+
+![no answer](images/tests/C9_ControlWordInLedData/C9_5_zoom_EOP_no_answer.png){#fig-hw-cap-c9-d}
+
+Test C9, control word inside LED data (capture `LedData_InvalidSopAsData`, 2 ms/div). PicoScope 7, Save as PNG, decoded words from the decoder CSV export.
+:::
 
 ## Problems and Solutions {#sec-problems}
 
@@ -391,10 +591,12 @@ During the implementation and the tests, several problems came up. @tbl-problems
 | The design was lost after the board was switched off          | the bitstream was only loaded into the SRAM of the FPGA                                    | the boards were programmed again after each power-up |
 | The simulation failed after the change to 1 MBaud             | the testbench still used the bit time of 115,200 baud                                      | bit time and `CLKS_PER_BIT` in the testbench updated to 1 MBaud              |
 | Gaps of 1 ms to 2.6 ms between groups of words                | the PC program changes the parity setting before each group of words                       | accepted, because the nodes do not depend on the time between words          |
+| PicoScope note "sample rate may be too low" in two captures | captures C2 and C9 were taken at 2 ms/div, which lowers the sample rate to 5 MS/s | decoded values checked against the values sent by the PC and against the other captures |
 | External LEDs did not light up when connected directly | the outputs reach only about 2.5 V                                               | BS170 low-side driver stage with an external 12 V supply (@sec-hw-driver)    |
+| PWM high level only about 1.3 V with the driver stage | high internal resistance of the output, most likely the bus switch to the Pmod connector; without the driver stage, the level was 2.1 V | accepted for the prototype, because the BS170 parts used switch on; a level shifter is needed in a product (@sec-hw-pwm) |
 
 : Problems found during implementation and testing {#tbl-problems}
 
 The most important lesson from these problems is that **the PC side can hide or cause errors** that look like errors of the FPGA design. The gaps between the words and the missing 9th bit in the printed answers both come from the PC and the USB adapter. Using the oscilloscope with the serial decoder made it possible to see what really happened on the lines and to separate the behaviour of the nodes from the behaviour of the PC.
 
-To sum up, the hardware tests show that the Flexlink node works on two real GateMate boards. The design runs at 50 MHz with a timing margin of about 5.6 ns and uses less than 2 % of the FPGA. The nodes count themselves, take their own LED data, forward the rest and answer in the right order. The PWM output has a frequency of 763 Hz and a step size of 20 ns. The evaluation of these results against the requirements follows in @sec-evaluation.
+To sum up, the hardware tests show that the Flexlink node works on two real GateMate boards. The design runs at 50 MHz with a timing margin of about 5.5 ns and uses less than 2 % of the FPGA. The nodes count themselves, take their own LED data, forward the rest and answer in the right order. The PWM output has a frequency of 763 Hz and a step size of 20 ns. The evaluation of these results against the requirements follows in @sec-evaluation.

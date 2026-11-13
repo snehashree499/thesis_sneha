@@ -45,6 +45,7 @@ book:
     - content/01_introduction.qmd
     - content/02_fundamentals.qmd
     - content/03_requirements.qmd
+    - content/04_system_level.qmd
     - content/05_rtl_design.qmd
     - content/06_hardware.qmd      
     - content/07_evaluation.qmd
@@ -60,6 +61,8 @@ book:
 # Bibliography
 bibliography: _bibliography/references.bib
 csl: _bibliography/ieee.csl
+link-citations: true
+# link-bibliography: true
 
 format:
   html:

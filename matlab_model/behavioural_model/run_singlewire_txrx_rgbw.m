@@ -2,9 +2,46 @@ clear;
 close all;
 
 %% ============================================================
-%  MASTER RUN SCRIPT
-%  RGBW serial input -> Digital PWM -> Simscape RGBW LED currents
+%  SYSTEM-LEVEL MODEL - RUN SCRIPT
+%
+%  What this model covers
+%    A two-node single-wire link. A 64-bit RGBW frame is serialised
+%    in MATLAB, received by node 1, passed on to node 2, decoded
+%    into four 16-bit channels, turned into four PWM signals and
+%    applied to a Simscape LED power stage. Both nodes log their
+%    LED currents.
+%
+%  What this model does NOT cover
+%    This is not the Flexlink protocol. The model was built before
+%    the Flexlink specification was available in full. The main
+%    differences, listed in full in Chapter 4:
+%      - one 64-bit frame, MSB first, instead of eight 11-bit words
+%        with 9 data bits LSB first
+%      - 1 ms per bit instead of 1 MBd (11 us per word)
+%      - no 9th control bit, no node ID, no answer words
+%      - repeater forwarding: node 1 passes the whole frame on,
+%        while the implemented node keeps 8 bytes and forwards the
+%        rest (cut-through)
+%
+%  Time base
+%    The model runs 1000 times slower than the hardware: 1 ms per
+%    bit here against 1 us per bit on the line. This is only so that
+%    one PWM period stays visible next to one bit period.
 %  ============================================================
+
+%% Project paths
+% Makes the model and the block library findable wherever the
+% project folder sits, so the script also runs on another machine.
+
+thisFile    = mfilename('fullpath');
+projectRoot = fileparts(fileparts(thisFile));      % up from behavioural_model
+
+if isfolder(fullfile(projectRoot,'libraries'))
+    addpath(fullfile(projectRoot,'libraries'));
+end
+if isfolder(fullfile(projectRoot,'simulink_model'))
+    addpath(fullfile(projectRoot,'simulink_model'));
+end
 
 %% Simulink model name
 
@@ -26,6 +63,16 @@ fprintf('R = %5d\n', R_Value);
 fprintf('G = %5d\n', G_Value);
 fprintf('B = %5d\n', B_Value);
 fprintf('W = %5d\n', W_Value);
+
+%% [NEW] Channel colours, used in every figure
+% White cannot be shown on a white page, so W is drawn in dark grey.
+% The LED current traces also get different line styles, so the
+% figure stays readable when the thesis is printed in greyscale.
+
+COL_R = [0.80 0.00 0.00];
+COL_G = [0.00 0.55 0.15];
+COL_B = [0.00 0.30 0.80];
+COL_W = [0.35 0.35 0.35];
 
 %% Expected PWM duty cycles
 
@@ -62,6 +109,10 @@ fprintf('Hexadecimal frame = 0x%s\n', dec2hex(frame64, 16));
 %% Generate 64-bit serial data
 % Transmission order: R -> G -> B -> W
 % Bit order: MSB first
+%
+% note: the implemented Flexlink receiver takes 9-bit words
+% LSB first, with the high byte of each channel sent first. The bit
+% order here is a property of this model only (see Chapter 4).
 
 R_bits = double(bitget(R_Value, BITS_PER_CHANNEL:-1:1));
 G_bits = double(bitget(G_Value, BITS_PER_CHANNEL:-1:1));
@@ -86,6 +137,24 @@ simStopTime = 0.22;
 
 time = (0:Ts:simStopTime).';
 number_of_samples = length(time);
+
+%% Forwarding delay, scaled to the model time base
+% Measured on hardware: mean 10.69 us over 96 forwarded words.
+% The model runs 1000 times slower, so the same delay becomes
+% 10.69 ms here.
+%
+% This variable is used by the Transport Delay block inside
+% SingleWire_RX (Serial_In -> Transport Delay -> Serial_Out).
+% If that block is not present, the variable is simply unused and
+% node 2 receives the frame at the same instant as node 1.
+
+TIME_SCALE      = Tbit / 1e-6;                  % = 1000
+fwd_delay_hw    = 10.69e-6;                     % s, measured
+fwd_delay_model = fwd_delay_hw * TIME_SCALE;    % s, in model time
+
+fprintf('\nForwarding delay\n');
+fprintf('Hardware (measured) = %.2f us\n', fwd_delay_hw*1e6);
+fprintf('Model (scaled by %d) = %.2f ms\n', TIME_SCALE, fwd_delay_model*1000);
 
 %% Single-wire serial communication signal
 % This signal represents a simple one-wire Tx/Rx communication line.
@@ -138,37 +207,19 @@ Serial_Data_sim = timeseries(Serial_Data_data, time);
 fprintf('\nSingle-wire Simulink input signal created\n');
 fprintf('Serial data variable = Serial_Data_sim\n');
 
-%% Generate Data_In signal
 
-Data_In_data = zeros(number_of_samples, 1);
+%% Timing summary for the present model
 
-serial_samples = repelem(serial_bits, samples_per_bit);
-Data_In_data(1:length(serial_samples)) = serial_samples(:);
-
-%% Generate LE_In signal
-
-LE_In_data = zeros(number_of_samples, 1);
-
-LE_start = frame_time - Ts;
-LE_stop  = frame_time + Ts;
-
-LE_In_data(time >= LE_start & time <= LE_stop) = 1;
-
-%% Create Simulink timeseries inputs
-% These are used by the From Workspace blocks in Simulink.
-
-Data_In_sim = timeseries(Data_In_data, time);
-LE_In_sim   = timeseries(LE_In_data, time);
-
-fprintf('\nSimulink input signals created\n');
-fprintf('Data variable = Data_In_sim\n');
-fprintf('LE variable   = LE_In_sim\n');
+fprintf('\nTiming\n');
 fprintf('Bit time = %.3f ms\n', Tbit*1000);
+fprintf('Samples per bit = %d (Ts = %.3f ms)\n', samples_per_bit, Ts*1000);
 fprintf('Frame transmission time = %.3f ms\n', frame_time*1000);
-fprintf('LE window = %.3f ms to %.3f ms\n', LE_start*1000, LE_stop*1000);
 fprintf('Simulation stop time = %.3f s\n', simStopTime);
 
 %% MATLAB serialization check
+% This checks only that the MATLAB side packed and unpacked the
+% frame consistently. It says nothing about the receiver in the
+% model. See the optional receiver check further down.
 
 reconstructed_frame = uint64(0);
 
@@ -200,71 +251,99 @@ out = sim(modelName);
 
 disp('Simulink simulation completed.');
 
-%% Check LED current results
+%% Is node 2 logged in this model?
 
-I_R_min = min(out.I_LED_R_ts.Data);
-I_G_min = min(out.I_LED_G_ts.Data);
-I_B_min = min(out.I_LED_B_ts.Data);
-I_W_min = min(out.I_LED_W_ts.Data);
+try
+    test_node2 = out.I_LED_R_ts1;    %#ok<NASGU>
+    hasNode2 = true;
+catch
+    hasNode2 = false;
+end
 
-I_R_max = max(out.I_LED_R_ts.Data);
-I_G_max = max(out.I_LED_G_ts.Data);
-I_B_max = max(out.I_LED_B_ts.Data);
-I_W_max = max(out.I_LED_W_ts.Data);
+
+%% LED current check, both nodes
 
 fprintf('\nLED current check\n');
-fprintf('Minimum currents\n');
-fprintf('I_LED_R min = %.4e A\n', I_R_min);
-fprintf('I_LED_G min = %.4e A\n', I_G_min);
-fprintf('I_LED_B min = %.4e A\n', I_B_min);
-fprintf('I_LED_W min = %.4e A\n', I_W_min);
+fprintf('%-8s %-3s %14s %12s\n', 'Node', 'Ch', 'min [A]', 'max [A]');
 
-fprintf('\nMaximum currents\n');
-fprintf('I_LED_R max = %.4f A\n', I_R_max);
-fprintf('I_LED_G max = %.4f A\n', I_G_max);
-fprintf('I_LED_B max = %.4f A\n', I_B_max);
-fprintf('I_LED_W max = %.4f A\n', I_W_max);
+fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 1', 'R', ...
+        min(out.I_LED_R_ts.Data), max(out.I_LED_R_ts.Data));
+fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 1', 'G', ...
+        min(out.I_LED_G_ts.Data), max(out.I_LED_G_ts.Data));
+fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 1', 'B', ...
+        min(out.I_LED_B_ts.Data), max(out.I_LED_B_ts.Data));
+fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 1', 'W', ...
+        min(out.I_LED_W_ts.Data), max(out.I_LED_W_ts.Data));
 
-%% Plot input serial data and latch signal
+if hasNode2
+    fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 2', 'R', ...
+            min(out.I_LED_R_ts1.Data), max(out.I_LED_R_ts1.Data));
+    fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 2', 'G', ...
+            min(out.I_LED_G_ts1.Data), max(out.I_LED_G_ts1.Data));
+    fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 2', 'B', ...
+            min(out.I_LED_B_ts1.Data), max(out.I_LED_B_ts1.Data));
+    fprintf('%-8s %-3s %14.3e %12.4f\n', 'Node 2', 'W', ...
+            min(out.I_LED_W_ts1.Data), max(out.I_LED_W_ts1.Data));
+else
+    fprintf('Node 2 outputs not found in this model.\n');
+end
+
+%% Node comparison
+% In this model node 1 forwards the complete frame, so node 2 must
+% reach the same currents. In the implemented design node 1 keeps
+% the first 8 data bytes and forwards the rest, so the two nodes
+% show different colours there (Chapter 4, model vs implementation).
+
+if hasNode2
+    fprintf('\nNode comparison (repeater forwarding)\n');
+    fprintf('R max: node 1 = %.4f A, node 2 = %.4f A\n', ...
+            max(out.I_LED_R_ts.Data), max(out.I_LED_R_ts1.Data));
+    fprintf('G max: node 1 = %.4f A, node 2 = %.4f A\n', ...
+            max(out.I_LED_G_ts.Data), max(out.I_LED_G_ts1.Data));
+    fprintf('B max: node 1 = %.4f A, node 2 = %.4f A\n', ...
+            max(out.I_LED_B_ts.Data), max(out.I_LED_B_ts1.Data));
+    fprintf('W max: node 1 = %.4f A, node 2 = %.4f A\n', ...
+            max(out.I_LED_W_ts.Data), max(out.I_LED_W_ts1.Data));
+end
+
+
+%% Plot LED currents for both nodes
 
 figure;
 
 subplot(2,1,1);
-stairs(time*1000, Data_In_data, 'LineWidth', 1.1);
+
+% channel colours and line styles
+plot(out.I_LED_R_ts.Time*1000, out.I_LED_R_ts.Data*1000, '-',  'Color', COL_R, 'LineWidth', 1.3);
+hold on;
+plot(out.I_LED_G_ts.Time*1000, out.I_LED_G_ts.Data*1000, '--', 'Color', COL_G, 'LineWidth', 1.3);
+plot(out.I_LED_B_ts.Time*1000, out.I_LED_B_ts.Data*1000, '-.', 'Color', COL_B, 'LineWidth', 1.3);
+plot(out.I_LED_W_ts.Time*1000, out.I_LED_W_ts.Data*1000, ':',  'Color', COL_W, 'LineWidth', 1.6);
 grid on;
-ylabel('Data In');
-title('Generated 64-bit RGBW Serial Data');
-xlim([0 70]);
-ylim([-0.1 1.2]);
+ylabel('LED current [mA]');
+title('Node 1: Simscape RGBW LED currents');
+legend('I_{LED,R}','I_{LED,G}','I_{LED,B}','I_{LED,W}', ...
+       'Location','eastoutside');
+xlim([60 simStopTime*1000]);
+ylim([-1 25]);
 
 subplot(2,1,2);
-stairs(time*1000, LE_In_data, 'LineWidth', 1.3);
+if hasNode2
+
+    % channel colours and line styles
+    plot(out.I_LED_R_ts1.Time*1000, out.I_LED_R_ts1.Data*1000, '-',  'Color', COL_R, 'LineWidth', 1.3);
+    hold on;
+    plot(out.I_LED_G_ts1.Time*1000, out.I_LED_G_ts1.Data*1000, '--', 'Color', COL_G, 'LineWidth', 1.3);
+    plot(out.I_LED_B_ts1.Time*1000, out.I_LED_B_ts1.Data*1000, '-.', 'Color', COL_B, 'LineWidth', 1.3);
+    plot(out.I_LED_W_ts1.Time*1000, out.I_LED_W_ts1.Data*1000, ':',  'Color', COL_W, 'LineWidth', 1.6);
+    legend('I_{LED,R}','I_{LED,G}','I_{LED,B}','I_{LED,W}', ...
+           'Location','eastoutside');
+end
 grid on;
-xlabel('Time (ms)');
-ylabel('LE');
-title('Generated Latch Enable Signal');
-xlim([60 68]);
-ylim([-0.1 1.2]);
-
-%% Plot all four LED currents
-
-figure;
-
-plot(out.I_LED_R_ts.Time, out.I_LED_R_ts.Data * 1000, 'LineWidth', 1.2);
-hold on;
-plot(out.I_LED_G_ts.Time, out.I_LED_G_ts.Data * 1000, 'LineWidth', 1.2);
-plot(out.I_LED_B_ts.Time, out.I_LED_B_ts.Data * 1000, 'LineWidth', 1.2);
-plot(out.I_LED_W_ts.Time, out.I_LED_W_ts.Data * 1000, 'LineWidth', 1.2);
-
-grid on;
-xlabel('Time (s)');
-ylabel('LED current (mA)');
-title('Simscape RGBW LED Currents');
-
-legend('I_{LED,R}', 'I_{LED,G}', 'I_{LED,B}', 'I_{LED,W}', ...
-       'Location', 'best');
-
-xlim([0.06 0.22]);
+xlabel('Time [ms]');
+ylabel('LED current [mA]');
+title('Node 2: Simscape RGBW LED currents');
+xlim([60 simStopTime*1000]);
 ylim([-1 25]);
 
 %% Plot single-wire serial communication signal with start and stop bit markers
@@ -290,18 +369,22 @@ data_end_ms   = (PRE_IDLE_BITS + 1 + FRAME_BITS) * Tbit * 1000;
 stop_bit_begin_ms = data_end_ms;
 stop_bit_end_ms   = stop_bit_begin_ms + Tbit * 1000;
 
-xline(start_bit_begin_ms, '--', 'Start bit begins');
-xline(start_bit_end_ms,   '--', 'Start bit ends');
-
-xline(stop_bit_begin_ms, '--', 'Stop bit begins');
-xline(stop_bit_end_ms,   '--', 'Stop bit ends');
+xline(start_bit_begin_ms, '--');
+xline(start_bit_end_ms,   '--');
+xline(stop_bit_begin_ms,  '--');
+xline(stop_bit_end_ms,    '--');
 
 text(start_bit_begin_ms + 0.2, 0.15, 'START BIT = 0');
 text(stop_bit_begin_ms + 0.2, 0.85, 'STOP BIT = 1');
 
-%% Final message
+%% Final summary
 
 fprintf('\nFinal result\n');
-disp('One-run MATLAB + Simulink + Simscape simulation completed successfully.');
-disp('Expected result: min currents near 0 A and max currents near 0.022 A.');
-
+fprintf('Frame sent     = 0x%s\n', dec2hex(frame64, 16));
+fprintf('Expected duty  = R %.2f %%, G %.2f %%, B %.2f %%, W %.2f %%\n', ...
+        R_duty, G_duty, B_duty, W_duty);
+fprintf('Node 1 I_R max = %.4f A\n', max(out.I_LED_R_ts.Data));
+if hasNode2
+    fprintf('Node 2 I_R max = %.4f A\n', max(out.I_LED_R_ts1.Data));
+end
+disp('MATLAB + Simulink + Simscape run completed.');

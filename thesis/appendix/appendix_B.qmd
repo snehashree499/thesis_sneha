@@ -1,17 +1,41 @@
-# USB-Stick and Script Referencing
+# Digital Appendix {#sec-appendix-b}
 
-All directory structures and file paths presented in this appendix are intentionally simplified. They are provided to clarify the organization of the project and to indicate where specific scripts, netlists, verification outputs, and layout files can be found within the design environment.
+All files of this thesis are stored in the Git repository [github.com/snehashree499/thesis_sneha](https://github.com/snehashree499/thesis_sneha) and on the USB stick that is handed in with the printed thesis. The source code of the final build is Git commit `4243dc6` (@tbl-versions).
 
+The following overview shows the folders that belong to the thesis. The paths are shortened, and folders that only contain temporary build files are not listed.
+
+<!-- [NEW] tree with plain ASCII signs and shorter lines, so nothing is cut in the PDF -->
 ```t
-thesis
-├── .gitattributes
-├── .gitignore
-├── _book/
-├── _quarto/
-├── _quarto.yml
-├── _bibliography
-├── index.qmd            # Main project page
-├── README.md
-├── references.qmd
-├── appendix             # Appendix
+thesis_sneha/
+|-- GateMate-FPGA-Projects/
+|   |-- FlexLink_Node_v1/          # final design of the Flexlink node
+|   |   |-- flexlink_node.v        # Verilog design
+|   |   |-- flexlink_node.ccf      # constraint file
+|   |   |-- tb_flexlink_node.v     # testbench (Icarus Verilog)
+|   |   |-- build.bat              # synthesis, place and route, programming
+|   |   |-- sim.bat                # simulation (Icarus Verilog)
+|   |   |-- flexlink_pc_test.py    # PC test program
+|   |   |-- flexlink_node.bit      # bitstream of the final build
+|   |   `-- utilisation.json       # resource and timing report
+|   `-- Picoscope_outputs/
+|       |-- Final_outputs/         # captures (.psdata) and decoder exports (.csv)
+|       `-- PWM_16Bit_*.png        # PWM captures
+|-- matlab_model/
+|   |-- simulink_model/
+|   |   `-- GateMate_SingleWire_TxRx_RGBW.slx   # Simulink model
+|   `-- behavioural_model/
+|       |-- run_singlewire_txrx_rgbw.m          # script that runs the model
+|       `-- export_ch4_figures.m                # exports the figures of Ch. 4
+`-- thesis/                        # Quarto source of this document
+    |-- content/                   # chapters and figures
+    |-- appendix/                  # appendices
+    `-- _bibliography/             # references
 ```
+
+How to repeat the main steps:
+
+1. **Simulation of the Verilog design.** Run `sim.bat` in `FlexLink_Node_v1`. It compiles the design and the testbench with Icarus Verilog and runs the simulation.
+2. **Build and programming.** Run `build.bat` in `FlexLink_Node_v1`. It runs Yosys, nextpnr, gmpack and openFPGALoader with the commands shown in @sec-hw-flow and loads the bitstream into both boards.
+3. **Hardware test.** Connect the boards as in @tbl-wiring and run `python flexlink_pc_test.py`.
+4. **Simulink model.** Open MATLAB R2025b in `matlab_model/behavioural_model` and run `run_singlewire_txrx_rgbw.m`.
+5. **Thesis document.** Run `quarto render` in the folder `thesis`.
