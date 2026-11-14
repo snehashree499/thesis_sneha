@@ -1,3 +1,7 @@
 # Acknowledgements {.unnumbered}
 
-  *In Progress*
+I would like to thank my supervisor, Prof. Dr.-Ing. Mirco Meiners, for his support and guidance throughout this thesis. There were times when I was stuck and made the solution more complicated than it needed to be. In those moments, his questions and advice helped me to see the problem clearly again. One sentence of his stayed with me whenever I did not know how to go on - "Just do it." It kept me motivated until the end.
+
+I also thank the team at AES Aircraft Elektro/Elektronik System GmbH in Bremen for their support. They gave me access to their lab and measurement equipment, helped me take the measurements and always took time to answer my questions.
+
+Finally, I thank my family and friends, who stood by me and encouraged me through this whole journey.

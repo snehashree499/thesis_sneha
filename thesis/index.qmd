@@ -1,7 +1,5 @@
 # List of Abbreviations {.unnumbered .unlisted}
 
-<!-- [NEW] added: AMC, BGA, CSV, MSB, NMOS, PNG, RS-485, SPI, SPICE (no comments possible inside the table) -->
-
 | **Abbreviation** | **Meaning** |
 |:-----------------|:------------|
 | AES    | AES Aircraft Elektro/Elektronik System GmbH |

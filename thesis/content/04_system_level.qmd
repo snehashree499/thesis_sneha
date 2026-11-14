@@ -112,7 +112,7 @@ The frame is sent **MSB first** and wrapped in a simple frame: the line rests hi
 4. **Shifting.** Each sampled bit is shifted into a register from the right: the register is shifted left by one place, and the new bit is placed in the least significant position. Because the transmitter sends the MSB first, the first bit ends up as the MSB after 64 steps, and the original order is restored.
 5. **Frame complete.** After 64 bits, the register is copied to `Frame_Out`, `Frame_Valid` is set for one step of 0.25 ms, and the block returns to idle.
 
-The transmitter always sends the stop bit, but the receiver does not check it after the 64th data bit. The receiver also has no timeout and does not filter noise. These points did not matter for the purpose of the model, but they are listed in @sec-sim-limitations. The complete code of RX_Core is given in @sec-app-rxcore.
+The transmitter always sends the stop bit, but the receiver does not check it after the 64th data bit. The receiver also has no timeout and does not filter noise. These points did not matter for the purpose of the model, but they are listed in @sec-sim-limitations. The complete code of RX_Core is part of the Simulink model in the repository of this thesis (@sec-appendix-b).
 
 ## Splitting the Frame {#sec-sim-latch}
 

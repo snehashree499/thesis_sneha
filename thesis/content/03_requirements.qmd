@@ -145,12 +145,6 @@ Several decisions had to be made before the design could start. This section exp
 
 One option is a single central FPGA that drives all segments of the cabin with separate wires. This needs few chips, but the number of wires grows with every segment, which adds weight and failure points. The other option is a **small FPGA in every segment**, connected in a chain. Here, the wiring stays almost the same when segments are added, because each node only connects to its two neighbours (@sec-topologies). This matches the daisy-chain concept of AES (R6 in @tbl-requirements), so **one FPGA per segment, connected in a chain**, was chosen.
 
-<!-- 
-### LED Driver IC or PWM in the FPGA {#sec-dec-driver-ic}
-
-Two dedicated LED driver ICs were studied as an alternative, the Diodes AL58263Q and the Texas Instruments TLC59482 [@diodes_al58263q, @ti_tlc59482]. Both can generate PWM for many channels, but they need their own configuration interface, and the FPGA would then only translate between Flexlink and that interface. Since the FPGA can generate the 16-bit PWM itself with little logic (@sec-pwm-generator), **the FPGA generates the PWM**, and only simple transistors are used outside. This keeps the part count low and puts the whole digital function into the design that could later become an ASIC (R15).
--->
-
 ### Microcontroller or FPGA in Each Segment {#sec-dec-driver-ic}
 
 In the present AES system, every segment has an **STM32C011F6 microcontroller**. It receives the Flexlink packet, passes it on to the next segment, sends the answers back and generates the four PWM signals [@st_stm32c011]. Each PWM signal then switches an LED driver that sets the current of its channel, either a BCR421UFD regulator or a transistor circuit with the BC846AQB-Q [@diodes_bcr421; @nexperia_bc846].

@@ -1,6 +1,6 @@
 # RTL Design of the Flexlink Node {#sec-rtl}
 
-This chapter describes the Verilog design that runs on each GateMate FPGA in the chain. The complete code is given in @sec-app-verilog.
+This chapter describes the Verilog design that runs on each GateMate FPGA in the chain. The complete code is available in the repository of this thesis (@sec-appendix-b).
 In this thesis, a GateMate that runs this design is called a **Flexlink node**. Every node
 in the chain uses the same design. The first GateMate (node) receives Flexlink packets from
 the *master* (the PC in this prototype) over the *uplink*; every following node receives them from the node before it.
