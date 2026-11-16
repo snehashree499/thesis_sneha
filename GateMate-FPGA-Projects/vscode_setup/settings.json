@@ -1,0 +1,18 @@
+{
+  "//": "Syntax highlighting for the file types in this project.",
+  "files.associations": {
+    "*.v": "verilog",
+    "*.ccf": "properties",
+    "*.cfg": "plaintext"
+  },
+
+  "//linting": "Uses iverilog from OSS CAD Suite to underline mistakes as you type.",
+  "verilog.linting.linter": "iverilog",
+  "verilog.linting.iverilog.arguments": "-g2005",
+
+  "//hide": "Build leftovers clutter the file tree - hide them.",
+  "files.exclude": {
+    "**/*.json.bak": true,
+    "**/*.out": true
+  }
+}

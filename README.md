@@ -1,93 +1,59 @@
-# Thesis_Sneha
+# Design and FPGA Prototyping of a LED Driver for Aircraft Cabin Lighting with Open-Source Tools
 
+Master's thesis of **Sneha Shree Katepalli**
+Hochschule Bremen - City University of Applied Sciences
 
+This repository holds the Verilog design of a daisy-chained RGBW LED node (Flexlink protocol) for the
+Cologne Chip GateMate FPGA, the test files, the measurement data, the MATLAB/Simulink model and the
+Quarto source of the thesis. The whole FPGA flow uses open-source tools only
+(Yosys, nextpnr, gmpack, openFPGALoader, Icarus Verilog from the OSS CAD Suite).
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Folder structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha.git
-git branch -M main
-git push -uf origin main
+thesis_sneha/
+|-- GateMate-FPGA-Projects/
+|   |-- Flexlink_Node/            final design of the Flexlink node
+|   |   |-- flexlink_node.v          Verilog design (top module, UART, FIFO, PWM)
+|   |   |-- flexlink_node.ccf        pin constraints
+|   |   |-- tb_flexlink_node.v       testbench, normal packets
+|   |   |-- tb_flexlink_errors.v     testbench, error cases
+|   |   |-- sim.bat / sim_errors.bat run the two simulations
+|   |   |-- build.bat                synthesis, place and route, programming of both boards
+|   |   |-- flexlink_pc_test.py      PC test program (pySerial, 1 MBaud, 9-bit words)
+|   |   |-- flexlink_node.bit        bitstream of the final build
+|   |   `-- utilisation.json         resource and timing report
+|   `-- Picoscope_outputs/
+|       |-- Final_outputs/           oscilloscope captures (.psdata)
+|       `-- ch6_plots/               decoded CSV tables and make_ch6_plots.py
+|-- matlab_model/
+|   |-- simulink_model/              Simulink models
+|   `-- behavioural_model/           MATLAB scripts that run the model and export the figures
+|-- thesis/                          Quarto source of the thesis (content, appendix, bibliography)
+|-- Documentation_Exposé/            Quarto source of the exposé
+|-- files/                           datasheets and GateMate documentation
+`-- workspace/                       first GateMate example projects (blink, fifo, mult)
 ```
 
-## Integrate with your tools
+## How to repeat the main steps (Windows)
 
-- [ ] [Set up project integrations](https://gitlab.on.hs-bremen.de/skatepalli/thesis_sneha/-/settings/integrations)
+The batch files expect the OSS CAD Suite in `C:\Users\<name>\eda\oss-cad-suite`.
+Change the path `YOSYSHQ_ROOT` at the top of each `.bat` file if it is installed somewhere else.
 
-## Collaborate with your team
+1. **Simulation** (no boards needed). In `GateMate-FPGA-Projects/Flexlink_Node` run `sim.bat` and
+   `sim_errors.bat`. Both end with `PASS`.
+2. **Build and programming.** Connect both GateMate evaluation boards by USB and run `build.bat`.
+   The same bitstream is loaded into both boards. They are selected by their USB serial number.
+3. **Hardware test.** Wire the boards as described in `Flexlink_Node/README.md` and run
+   `python flexlink_pc_test.py`.
+4. **Plots of Chapter 6.** Run `python make_ch6_plots.py` in `Picoscope_outputs/ch6_plots`.
+5. **Simulink model.** Open MATLAB R2025b in `matlab_model/behavioural_model` and run
+   `run_singlewire_txrx_rgbw.m`.
+6. **Thesis PDF.** Run `quarto render --to pdf` in the folder `thesis`.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## Hardware
 
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- 2 x Cologne Chip GateMate FPGA Evaluation Board (CCGM1A1, version 3.2A)
+- CP2104 USB-to-TTL adapter (PC as Flexlink master)
+- BS170 MOSFETs and 5 mm red, green, blue and white LEDs on a breadboard
+- PicoScope 4444 for the measurements

@@ -1,0 +1,50 @@
+{
+  "version": "2.0.0",
+  "//": "Every task runs in the folder of the file you currently have open.",
+  "//how": "Press Ctrl+Shift+P, type 'Run Task', pick one. Ctrl+Shift+B runs the default.",
+  "tasks": [
+    {
+      "label": "Simulate  ->  waveform",
+      "type": "shell",
+      "command": "sim.bat",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Blink waveform (08 only)",
+      "type": "shell",
+      "command": "wave.bat",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Build + program NODE 1",
+      "type": "shell",
+      "command": "build_node1.bat",
+      "args": ["E1-32A0090"],
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Build + program NODE 2",
+      "type": "shell",
+      "command": "build_node2.bat",
+      "args": ["E1-32A0179"],
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Scan connected boards",
+      "type": "shell",
+      "command": "scan.bat",
+      "options": { "cwd": "${workspaceFolder}/08_TwoNode_Link" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

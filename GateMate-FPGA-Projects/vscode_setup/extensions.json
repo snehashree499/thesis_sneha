@@ -1,0 +1,11 @@
+{
+  "//": "VS Code will offer to install these when you open this folder.",
+  "recommendations": [
+    "lramseyer.vaporview",
+    "mshr-h.veriloghdl"
+  ],
+  "//alternatives": [
+    "surfer-project.surfer  - another waveform viewer, also free",
+    "wavetrace.wavetrace    - waveform viewer, free tier plus paid features"
+  ]
+}

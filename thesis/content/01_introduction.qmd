@@ -18,7 +18,7 @@ For the daisy-chain to work, every node in the chain has to do four things at th
 
 The difficulty lies in the timing. Each node adds a small delay before the data reaches the next one, and in a chain these delays add up. Even so, the 25th segment has to receive its new values within 25 ms, so that a passenger does not see the light change from one end of the cabin to the other. At the same time, the brightness must be set with 16-bit resolution and the PWM frequency must stay above 400 Hz to avoid visible flicker [@aes_wishlist]. These requirements are clear on paper, but it is not obvious how a small digital circuit can meet all of them at once, while every node in the chain runs exactly the same design.
 
-This leads to the question of this thesis: **can the control and forwarding part of such a daisy-chained RGBW LED node be built as one small FPGA design that meets the timing of the chain, and can this be shown on real hardware using only open-source tools?**
+This leads to the question of this thesis. **Can the control and forwarding part of such a daisy-chained RGBW LED node be built as one small FPGA design that meets the timing of the chain, and can this be shown on real hardware using only open-source tools?**
 
 ## Objectives {#sec-objectives}
 

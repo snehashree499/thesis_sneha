@@ -28,6 +28,9 @@ Signature:
 
 ## Use of AI-Based Tools {.unnumbered .unlisted}
 
-In this thesis, AI-based tools were used as aids, as agreed with the examiner under Option 2. The concept, the design decisions, the hardware setup, code logic, all measurements and the evaluation of the results are my own work. Everything produced with the help of AI was checked by me, tested in simulation or on the hardware where it concerned code, and corrected where needed. Claude (Opus 5.5) tool was used for correcting grammar, organising the structure of chapters, finding references, creating tables, plots and figures (listed below), error debugging of rtl test code. 
+In this thesis, AI-based tools were used as aids, as agreed with the examiner under Option 2. The concept, the design decisions, the hardware setup, code logic, all measurements and the evaluation of the results are my own work. Everything produced with the help of AI was checked by me, tested in simulation or on the hardware where it concerned code, and corrected where needed. 
 
-Tables and figures created with Claude from my data or my notes: @tbl-resources (from the nextpnr report), @tbl-comm-results, @tbl-hw-timing, @tbl-pwm-results, @tbl-driver-values, @tbl-robustness, @fig-hw-decoded, @fig-hw-forwarding and @fig-hw-timing-stats. 
+For initial understanding and testing of the FPGA board, the tool Antigravity 2.0 was used (not for the core part of this thesis). 
+Claude (Opus 5.5) tool was used for correcting grammar, organising the structure of chapters, finding references, creating tables, plots and figures (listed below), error debugging of rtl test code. 
+
+Tables and figures created with Claude from my data or my notes: @tbl-resources (from the nextpnr report), @tbl-comm-results, @tbl-hw-timing, @tbl-pwm-results, @tbl-driver-values, @tbl-robustness, @fig-hw-decoded, @fig-hw-forwarding and @fig-hw-timing-stats, @fig-count-errors, @fig-led-errors. 

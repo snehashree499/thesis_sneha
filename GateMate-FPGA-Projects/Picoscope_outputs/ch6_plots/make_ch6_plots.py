@@ -1,5 +1,4 @@
 """Plots and timing values of Chapter 6, made from the PicoScope CSV exports.
-Run from this folder:  python make_ch6_plots.py
 Needs: numpy, matplotlib.  Reads ../Final_outputs (waveform CSV) and ./decoder_csv (decoder tables)."""
 import csv, glob, os, json, statistics, collections
 import numpy as np, matplotlib

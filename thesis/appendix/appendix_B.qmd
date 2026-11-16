@@ -7,19 +7,20 @@ The following overview shows the folders that belong to the thesis. The paths ar
 ```t
 thesis_sneha/
 |-- GateMate-FPGA-Projects/
-|   |-- FlexLink_Node_v1/          # final design of the Flexlink node
+|   |-- Flexlink_Node/          # final design of the Flexlink node
 |   |   |-- flexlink_node.v        # Verilog design
 |   |   |-- flexlink_node.ccf      # constraint file
 |   |   |-- tb_flexlink_node.v     # testbench (Icarus Verilog)
+|   |   |-- tb_flexlink_errors.v   # error-case testbench
 |   |   |-- build.bat              # synthesis, place and route, programming
 |   |   |-- sim.bat                # simulation (Icarus Verilog)
+|   |   |-- sim_errors.bat         # error-case simulation
 |   |   |-- flexlink_pc_test.py    # PC test program
 |   |   |-- flexlink_node.bit      # bitstream of the final build
 |   |   `-- utilisation.json       # resource and timing report
 |   `-- Picoscope_outputs/
-|       |-- Final_outputs/         # captures (.psdata), raw data (.csv)
-|       |-- ch6_plots/             # decoder tables, make_ch6_plots.py
-|       `-- PWM_16Bit_*.png        # PWM captures
+|       |-- Final_outputs/         # captures (.psdata)
+|       `-- ch6_plots/             # decoder tables, make_ch6_plots.py
 |-- matlab_model/
 |   |-- simulink_model/
 |   |   `-- GateMate_SingleWire_TxRx_RGBW.slx   # Simulink model
@@ -34,8 +35,8 @@ thesis_sneha/
 
 How to repeat the main steps:
 
-1. **Simulation of the Verilog design.** Run `sim.bat` in `FlexLink_Node_v1`. It compiles the design and the testbench with Icarus Verilog and runs the simulation.
-2. **Build and programming.** Run `build.bat` in `FlexLink_Node_v1`. It runs Yosys, nextpnr, gmpack and openFPGALoader with the commands shown in @sec-hw-flow and loads the bitstream into both boards.
+1. **Simulation of the Verilog design.** Run `sim.bat` in `Flexlink_Node`. It compiles the design and the testbench with Icarus Verilog and runs the simulation.
+2. **Build and programming.** Run `build.bat` in `Flexlink_Node`. It runs Yosys, nextpnr, gmpack and openFPGALoader with the commands shown in @sec-hw-flow and loads the bitstream into both boards.
 3. **Hardware test.** Connect the boards as in @tbl-wiring and run `python flexlink_pc_test.py`.
 4. **Simulink model.** Open MATLAB R2025b in `matlab_model/behavioural_model` and run `run_singlewire_txrx_rgbw.m`.
 5. **Thesis document.** Run `quarto render` in the folder `thesis`.

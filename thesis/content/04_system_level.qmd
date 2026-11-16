@@ -94,7 +94,7 @@ $$
 \text{frame} = R \cdot 2^{48} + G \cdot 2^{32} + B \cdot 2^{16} + W = \texttt{0x27104E2075309C40}
 $$ {#eq-sim-frame}
 
-The frame is sent **MSB first** and wrapped in a simple frame: the line rests high (idle), a start bit (0) marks the beginning, the 64 data bits follow, and a stop bit (1) ends the frame. Five idle bits before the frame and ten after it give 81 bits in total. With a bit time of 1 ms, the data field takes 64 ms and the whole transmission 81 ms. @fig-sim-serial shows the resulting signal.
+The frame is sent **MSB first** and wrapped in a simple frame. The line rests high (idle), a start bit (0) marks the beginning, the 64 data bits follow, and a stop bit (1) ends the frame. Five idle bits before the frame and ten after it give 81 bits in total. With a bit time of 1 ms, the data field takes 64 ms and the whole transmission 81 ms. @fig-sim-serial shows the resulting signal.
 
 ![Single-wire signal for the frame 0x27104E2075309C40. The dashed lines mark the start and the stop bit.](images/matlab/fig_serial_waveform.png){#fig-sim-serial width=12cm}
 
@@ -109,7 +109,7 @@ The frame is sent **MSB first** and wrapped in a simple frame: the line rests hi
 1. **Idle.** The block watches the line, which rests high.
 2. **Start bit.** A change from high to low is taken as the start bit. The counters are reset and the block starts to receive.
 3. **Sampling.** The first data bit is sampled 6 samples after the edge, which is 1.5 bit times later, and every further bit 4 samples after the previous one. These sampling points lie in the **centre of each bit**, where the level is stable.
-4. **Shifting.** Each sampled bit is shifted into a register from the right: the register is shifted left by one place, and the new bit is placed in the least significant position. Because the transmitter sends the MSB first, the first bit ends up as the MSB after 64 steps, and the original order is restored.
+4. **Shifting.** Each sampled bit is shifted into a register from the right. The register is shifted left by one place, and the new bit is placed in the least significant position. Because the transmitter sends the MSB first, the first bit ends up as the MSB after 64 steps, and the original order is restored.
 5. **Frame complete.** After 64 bits, the register is copied to `Frame_Out`, `Frame_Valid` is set for one step of 0.25 ms, and the block returns to idle.
 
 The transmitter always sends the stop bit, but the receiver does not check it after the 64th data bit. The receiver also has no timeout and does not filter noise. These points did not matter for the purpose of the model, but they are listed in @sec-sim-limitations. The complete code of RX_Core is part of the Simulink model in the repository of this thesis (@sec-appendix-b).
