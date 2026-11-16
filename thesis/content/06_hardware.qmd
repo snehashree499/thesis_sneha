@@ -63,7 +63,7 @@ To make the results reproducible, @tbl-versions lists the tool versions and the 
 | Yosys                    | 0.69+75 (git f0b945f63)                                |
 | nextpnr-himbaechel       | 0.11.1-30 (git 3e53a0bf)                               |
 | openFPGALoader           | 1.1.1                                                  |
-| Source code              | Git commit 4243dc6 in `Flexlink_Node`                  |
+| Source code              | Git commit 57b6855 in `Flexlink_Node`                  |
 
 : Tool versions and source code version of the final build {#tbl-versions}
 

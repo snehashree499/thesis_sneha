@@ -1,6 +1,6 @@
 # Digital Appendix {#sec-appendix-b}
 
-All files of this thesis are stored in the Git repository [github.com/snehashree499/thesis_sneha](https://github.com/snehashree499/thesis_sneha) and on the USB stick that is handed in with the printed thesis. The source code is not printed in this document. The final Verilog design, the constraint file, the testbench, the PC test program, the Simulink model and the raw data of the measurements can be found in the repository. The source code of the final build is Git commit `4243dc6` (@tbl-versions).
+All files of this thesis are stored in the Git repository [github.com/snehashree499/thesis_sneha](https://github.com/snehashree499/thesis_sneha) and on the USB stick that is handed in with the printed thesis. The source code is not printed in this document. The final Verilog design, the constraint file, the testbench, the PC test program, the Simulink model and the raw data of the measurements can be found in the repository. The source code of the final build is Git commit `57b6855` (@tbl-versions).
 
 The following overview shows the folders that belong to the thesis. The paths are shortened, and folders that only contain temporary build files are not listed.
 
